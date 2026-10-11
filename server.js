@@ -507,6 +507,31 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.log(`\n=======================================================`);
+    console.log(`   [!] Port ${PORT} is already in use.`);
+    console.log(`   Android Rescue Shield is already running!`);
+    console.log(`   Opening GUI window at http://localhost:${PORT} ...`);
+    console.log(`=======================================================\n`);
+
+    const appUrl = `http://localhost:${PORT}`;
+    const edgePath = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+    const edgePath64 = 'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe';
+
+    if (fs.existsSync(edgePath)) {
+      execFile(edgePath, [`--app=${appUrl}`], () => {});
+    } else if (fs.existsSync(edgePath64)) {
+      execFile(edgePath64, [`--app=${appUrl}`], () => {});
+    } else {
+      const { exec } = require('child_process');
+      exec(`start ${appUrl}`);
+    }
+  } else {
+    console.error('[Server Error]', err);
+  }
+});
+
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`=======================================================`);
   console.log(`   Android Rescue Shield`);
@@ -527,3 +552,4 @@ server.listen(PORT, '127.0.0.1', () => {
     exec(`start ${appUrl}`);
   }
 });
+

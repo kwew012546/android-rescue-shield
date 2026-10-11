@@ -7,9 +7,13 @@ echo   Android Rescue Shield
 echo   Starting GUI Server...
 echo ========================================================
 echo.
-echo If the GUI window does not open automatically,
-echo please open your browser to: http://localhost:3210
-echo.
+
+:: Automatically kill any lingering zombie process on port 3210
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :3210 ^| findstr LISTENING 2^>nul') do (
+    taskkill /f /pid %%a >nul 2>&1
+)
+
+echo Opening GUI at: http://localhost:3210
 echo Press Ctrl+C or close this window to exit.
 echo.
 
