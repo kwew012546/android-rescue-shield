@@ -509,7 +509,21 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`=======================================================`);
-  console.log(`🛡️  Android Adware & Screen Hijack Rescue Tool`);
-  console.log(`🚀 Server running at: http://127.0.0.1:${PORT}`);
+  console.log(`   Android Rescue Shield`);
+  console.log(`   Server running at: http://127.0.0.1:${PORT}`);
   console.log(`=======================================================`);
+
+  // Auto-launch desktop GUI window
+  const appUrl = `http://localhost:${PORT}`;
+  const edgePath = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+  const edgePath64 = 'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe';
+
+  if (fs.existsSync(edgePath)) {
+    execFile(edgePath, [`--app=${appUrl}`], () => {});
+  } else if (fs.existsSync(edgePath64)) {
+    execFile(edgePath64, [`--app=${appUrl}`], () => {});
+  } else {
+    const { exec } = require('child_process');
+    exec(`start ${appUrl}`);
+  }
 });
