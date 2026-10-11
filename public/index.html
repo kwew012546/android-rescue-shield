@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Android Rescue Shield - กู้ภัยมือถือโดนล็อก & ถอนแอปโฆษณา</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">🛡️</div>
+        <div>
+          <h1 class="brand-title">Android Rescue Shield</h1>
+          <p class="brand-subtitle">โปรแกรมกู้ภัยมือถือโดนล็อกหน้าจอ & ถอนการติดตั้งแอปโฆษณาแฝงตัว</p>
+        </div>
+      </div>
+      <div class="header-status">
+        <div id="device-pill" class="status-pill status-disconnected">
+          <span class="status-dot"></span>
+          <span id="device-pill-text">ไม่ได้เชื่อมต่อ</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+      <!-- STATE 1: Empty / Disconnected State -->
+      <section id="state-disconnected" class="state-card empty-state">
+        <div class="empty-icon">🔌</div>
+        <h2 class="empty-title">กรุณาเชื่อมต่อโทรศัพท์มือถือผ่านสาย USB</h2>
+        <p class="empty-desc">
+          เมื่อหน้าจอมือถือถูกขโมยหรือมีโฆษณาเด้งทับตลอดเวลา การควบคุมผ่านสาย USB (ADB) คือวิธีเดียวที่สามารถสั่งปิดและลบแอปได้ 100%
+        </p>
+
+        <div class="setup-steps">
+          <div class="step-item">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <strong>เปิด "โหมดนักพัฒนา" (Developer Options)</strong>
+              <span>เข้า การตั้งค่า > เกี่ยวกับโทรศัพท์ > แตะที่ <em>"หมายเลขบิลด์ (Build Number)"</em> ติดต่อกัน 7 ครั้ง</span>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <strong>เปิด "การดีบัก USB" (USB Debugging)</strong>
+              <span>เข้า การตั้งค่า > ระบบ / ตัวเลือกสำหรับนักพัฒนา > เปิดใช้งาน <em>"การดีบัก USB"</em></span>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <strong>เสียบสาย USB และอนุญาตการเชื่อมต่อ</strong>
+              <span>เสียบสายเข้าคอมพิวเตอร์ หากมีป๊อปอัปขึ้นบนจอมือถือ ให้ติ๊ก <em>"อนุญาตเสมอ"</em> แล้วกดตกลง</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="empty-action-wrapper">
+          <!-- Single Primary Action for Empty State -->
+          <button id="btn-check-device" class="btn btn-primary btn-large">
+            <span class="btn-icon">🔄</span> ตรวจสอบการเชื่อมต่อ
+          </button>
+        </div>
+        <p id="empty-feedback" class="inline-feedback-text"></p>
+      </section>
+
+      <!-- STATE 2: Unauthorized Warning State -->
+      <section id="state-unauthorized" class="state-card warning-state hidden">
+        <div class="warning-icon">📱⚠️</div>
+        <h2 class="warning-title">รอการยืนยันบนหน้าจอมือถือ</h2>
+        <p class="warning-desc">
+          ตรวจพบอุปกรณ์แล้ว แต่โทรศัพท์กำลังรอให้คุณกดยืนยัน <strong>"อนุญาตการดีบัก USB (Allow USB Debugging)"</strong>
+        </p>
+        <div class="unauth-tip">
+          💡 หากหน้าจอมือถือมีโฆษณาบังอยู่ ลองกดปุ่ม <strong>Home</strong> หรือ <strong>ปิด/เปิดหน้าจอ 1 ครั้ง</strong> เพื่อให้เห็นหน้าต่างยืนยัน แล้วติ๊ก <em>"อนุญาตเสมอจากคอมพิวเตอร์นี้"</em>
+        </div>
+        <div class="empty-action-wrapper">
+          <button id="btn-retry-auth" class="btn btn-primary btn-large">
+            <span class="btn-icon">🔄</span> กดยืนยันแล้ว ตรวจสอบอีกครั้ง
+          </button>
+        </div>
+      </section>
+
+      <!-- STATE 3: Connected & Active Dashboard -->
+      <section id="state-connected" class="dashboard hidden">
+        <!-- Device Info Banner -->
+        <div class="device-summary-card">
+          <div class="device-meta">
+            <div class="device-icon">📱</div>
+            <div>
+              <div class="device-name" id="dev-name">กำลังโหลดอุปกรณ์...</div>
+              <div class="device-details">
+                <span id="dev-android">Android -</span>
+                <span class="sep">•</span>
+                <span id="dev-serial">ID: -</span>
+                <span class="sep">•</span>
+                <span id="dev-battery">แบตเตอรี่: -</span>
+              </div>
+            </div>
+          </div>
+          <div class="device-quick-actions">
+            <button id="btn-reboot-safe" class="btn btn-secondary btn-sm" title="รีสตาร์ทเข้าโหมดปลอดภัย">
+              🛡️ รีบูตเข้า Safe Mode
+            </button>
+            <button id="btn-reboot-normal" class="btn btn-ghost btn-sm" title="รีสตาร์ทเครื่องปกติ">
+              🔄 รีสตาร์ทปกติ
+            </button>
+          </div>
+        </div>
+
+        <!-- Emergency Rescue Hero Banner -->
+        <div class="emergency-banner">
+          <div class="emergency-content">
+            <div class="emergency-header">
+              <span class="emergency-badge">🚨 เมนูกู้ภัยเร่งด่วน</span>
+              <span class="emergency-sub">สำหรับจังหวะที่หน้าจอมือถือโดนล็อกหรือโฆษณาเด้งบัง</span>
+            </div>
+            <div class="emergency-monitor">
+              <span class="monitor-label">แอปที่กำลังเปิดอยู่หน้าสุดในขณะนี้:</span>
+              <code id="top-app-display" class="top-app-code">กำลังตรวจจับ...</code>
+            </div>
+          </div>
+          <div class="emergency-actions">
+            <!-- Single Primary CTA for emergency -->
+            <button id="btn-emergency-kill" class="btn btn-danger btn-large">
+              <span class="btn-icon">⚡</span> สั่งปิดแอปที่บังจอทันที (Force Kill)
+            </button>
+            <button id="btn-emergency-uninstall" class="btn btn-danger-outline btn-large hidden">
+              <span class="btn-icon">🗑️</span> ถอนการติดตั้งตัวนี้ทันที
+            </button>
+          </div>
+        </div>
+        <div id="emergency-feedback" class="inline-msg"></div>
+
+        <!-- App Scanner & Danger Inspector Section -->
+        <div class="scanner-section">
+          <div class="section-toolbar">
+            <div class="toolbar-left">
+              <h2 class="section-title">📦 รายชื่อแอปพลิเคชัน (3rd-Party Apps)</h2>
+              <span id="apps-count-badge" class="count-badge">0 แอป</span>
+            </div>
+            <div class="toolbar-right">
+              <div class="search-box">
+                <input type="text" id="input-search" placeholder="พิมพ์ค้นหาชื่อ package..." />
+              </div>
+              <select id="select-filter" class="custom-select">
+                <option value="all">ทั้งหมด</option>
+                <option value="suspicious">⚠️ แสดงเฉพาะที่น่าสงสัย</option>
+                <option value="dangerous">🔴 อันตรายสูง (High Risk)</option>
+              </select>
+              <button id="btn-scan-deep" class="btn btn-secondary">
+                <span class="btn-icon">🔍</span> สแกนวิเคราะห์ความเสี่ยง
+              </button>
+            </div>
+          </div>
+
+          <!-- Apps Table View -->
+          <div class="table-container">
+            <table class="apps-table">
+              <thead>
+                <tr>
+                  <th>ระดับความเสี่ยง</th>
+                  <th>ชื่อ Package</th>
+                  <th>สิทธิ์อันตรายที่ตรวจพบ</th>
+                  <th>วันที่ติดตั้ง</th>
+                  <th class="th-actions">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="apps-tbody">
+                <tr>
+                  <td colspan="5" class="td-loading">
+                    <div class="loading-spinner"></div> กำลังดึงรายชื่อแอปจากโทรศัพท์...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Destructive Action Modal (Confirmation for Uninstall) -->
+    <div id="modal-uninstall" class="modal-backdrop hidden">
+      <div class="modal-box">
+        <div class="modal-icon">⚠️</div>
+        <h3 class="modal-title">ยืนยันการถอนการติดตั้ง</h3>
+        <p class="modal-text">
+          คุณต้องการลบแอปพลิเคชันต่อไปนี้ออกจากโทรศัพท์ใช่หรือไม่?
+        </p>
+        <div class="modal-target-box">
+          <code id="modal-pkg-name">com.example.adware</code>
+        </div>
+        <p class="modal-subtext">
+          * ระบบจะสั่งปิดการทำงาน ปลดสิทธิ์ Device Admin (ถ้ามี) และถอนการติดตั้งออกจากเครื่องทันที
+        </p>
+        <div class="modal-actions">
+          <button id="btn-cancel-uninstall" class="btn btn-secondary">ยกเลิก</button>
+          <button id="btn-confirm-uninstall" class="btn btn-danger">ยืนยันการลบแอป</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

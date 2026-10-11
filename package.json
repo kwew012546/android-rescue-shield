@@ -1,0 +1,11 @@
+{
+  "name": "android-adware-rescue",
+  "version": "1.0.0",
+  "description": "Android Adware & Screen Lock Rescue Tool - Inspect, Freeze & Force Uninstall aggressive adware/hijack apps via ADB",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "Antigravity",
+  "license": "MIT"
+}
