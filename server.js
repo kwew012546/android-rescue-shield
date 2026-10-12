@@ -428,6 +428,51 @@ async function handleApi(req, res, pathname) {
     });
   }
 
+  // POST /api/freeze - Freeze / Disable app completely (Castrate auto-restart)
+  if (pathname === '/api/freeze' && req.method === 'POST') {
+    const body = await parseJsonBody(req);
+    const pkg = body.package;
+    const action = body.action || 'disable'; // 'disable' or 'enable'
+    if (!pkg) return sendJson(res, 400, { ok: false, message: 'กรุณาระบุ package' });
+
+    const cmd = action === 'disable' ? ['shell', 'pm', 'disable-user', '--user', '0', pkg] : ['shell', 'pm', 'enable', pkg];
+    const frRes = await runAdb(cmd);
+    if (!frRes.ok) {
+      return sendJson(res, 500, { ok: false, message: `แช่แข็งไม่สำเร็จ: ${frRes.stderr || frRes.error}` });
+    }
+    return sendJson(res, 200, {
+      ok: true,
+      action,
+      package: pkg,
+      message: action === 'disable' ? `แช่แข็ง (Freeze) ${pkg} สำเร็จแล้ว แอปจะไม่สามารถทำงานได้อีก` : `ยกเลิกแช่แข็ง ${pkg} สำเร็จ`
+    });
+  }
+
+  // GET /api/accessibility - Check active accessibility services (Ghost touch / auto clickers)
+  if (pathname === '/api/accessibility' && req.method === 'GET') {
+    const accRes = await runAdb(['shell', 'settings', 'get', 'secure', 'enabled_accessibility_services']);
+    const raw = (accRes.stdout || '').trim();
+    const services = raw && raw !== 'null' ? raw.split(':').filter(Boolean) : [];
+    return sendJson(res, 200, {
+      ok: true,
+      raw,
+      services,
+      hasActiveServices: services.length > 0
+    });
+  }
+
+  // POST /api/clear-accessibility - Immediately disable all accessibility services (Stop ghost scrolling & auto-clickers)
+  if (pathname === '/api/clear-accessibility' && req.method === 'POST') {
+    const resClear = await runAdb(['shell', 'settings', 'put', 'secure', 'enabled_accessibility_services', '""']);
+    if (!resClear.ok) {
+      return sendJson(res, 500, { ok: false, message: 'ไม่สามารถปิด Accessibility ได้: ' + resClear.stderr });
+    }
+    return sendJson(res, 200, {
+      ok: true,
+      message: 'ปิดสิทธิ์ Accessibility ทั้งหมดสำเร็จแล้ว! อาการแย่งกดหน้าจอหรือเลื่อนเองจะหยุดทันที'
+    });
+  }
+
   // POST /api/force-stop - Force stop app
   if (pathname === '/api/force-stop' && req.method === 'POST') {
     const body = await parseJsonBody(req);

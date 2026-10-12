@@ -31,6 +31,7 @@ const el = {
   // Emergency Banner
   topAppDisplay: document.getElementById('top-app-display'),
   btnEmergencyKill: document.getElementById('btn-emergency-kill'),
+  btnKillGhost: document.getElementById('btn-kill-ghost'),
   btnEmergencyUninstall: document.getElementById('btn-emergency-uninstall'),
   emergencyFeedback: document.getElementById('emergency-feedback'),
 
@@ -71,6 +72,9 @@ function bindEvents() {
   });
 
   el.btnEmergencyKill.addEventListener('click', handleEmergencyKill);
+  if (el.btnKillGhost) {
+    el.btnKillGhost.addEventListener('click', handleKillGhost);
+  }
   el.btnEmergencyUninstall.addEventListener('click', () => {
     if (state.topApp && state.topApp.package) {
       promptUninstall(state.topApp.package);
@@ -192,7 +196,6 @@ async function pollTopApp() {
   }
 }
 
-// 3. Emergency Kill Action
 async function handleEmergencyKill() {
   const btn = el.btnEmergencyKill;
   const originalText = btn.innerHTML;
@@ -216,6 +219,33 @@ async function handleEmergencyKill() {
     }
   } catch (err) {
     showEmergencyMessage(`❌ เกิดข้อผิดพลาดในการส่งคำสั่ง: ${err.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+}
+
+async function handleKillGhost() {
+  if (!el.btnKillGhost) return;
+  const btn = el.btnKillGhost;
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="loading-spinner"></span> กำลังปิดสิทธิ์ Accessibility...`;
+
+  try {
+    const res = await fetch('/api/clear-accessibility', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showEmergencyMessage(`✅ ${data.message}`, 'success');
+      pollTopApp();
+    } else {
+      showEmergencyMessage(`⚠️ ${data.message}`, 'error');
+    }
+  } catch (err) {
+    showEmergencyMessage(`❌ ${err.message}`, 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = originalText;
@@ -396,10 +426,13 @@ function renderAppsTable() {
         <td style="color: #94a3b8; font-size: 0.85rem;">${installDate}</td>
         <td class="td-actions">
           <div class="row-actions">
-            <button class="btn btn-secondary btn-sm" onclick="forceStopApp('${escapeHtml(app.packageName)}', this)">
+            <button class="btn btn-secondary btn-sm" onclick="forceStopApp('${escapeHtml(app.packageName)}', this)" title="สั่งหยุดการทำงาน">
               🛑 หยุด
             </button>
-            <button class="btn btn-danger btn-sm" onclick="promptUninstall('${escapeHtml(app.packageName)}')">
+            <button class="btn btn-ghost btn-sm" onclick="freezeApp('${escapeHtml(app.packageName)}', this)" title="แช่แข็ง ปิดการทำงานไม่ให้รันตัวเองได้อีก">
+              ❄️ แช่แข็ง
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="promptUninstall('${escapeHtml(app.packageName)}')" title="ถอนการติดตั้ง">
               🗑️ ถอน
             </button>
           </div>
@@ -459,6 +492,36 @@ window.forceStopApp = async function(pkg, btn) {
     btn.innerHTML = orig;
     btn.disabled = false;
   }, 1500);
+};
+
+// 7.1 Action: Freeze App (Disable completely)
+window.freezeApp = async function(pkg, btn) {
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerText = '⏳';
+
+  try {
+    const res = await fetch('/api/freeze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ package: pkg, action: 'disable' })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      btn.innerText = '❄️ แช่แข็งแล้ว';
+      showEmergencyMessage(`✅ แช่แข็ง ${pkg} สำเร็จแล้ว แอปถูกปิดกั้นการทำงาน 100%`, 'success');
+    } else {
+      btn.innerText = '❌ ผิดพลาด';
+      showEmergencyMessage(`⚠️ ${data.message}`, 'error');
+    }
+  } catch (e) {
+    btn.innerText = '❌';
+  }
+
+  setTimeout(() => {
+    btn.innerHTML = orig;
+    btn.disabled = false;
+  }, 2000);
 };
 
 // 8. Action: Prompt & Execute Uninstall (Closed-Loop UX)
