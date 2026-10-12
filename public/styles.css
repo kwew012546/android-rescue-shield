@@ -743,6 +743,272 @@ html, body {
   display: none !important;
 }
 
+/* Technician Hacks & Field Guide */
+.tech-hacks-container {
+  margin-top: 2.5rem;
+  text-align: left;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1.5rem;
+}
+
+.tech-hacks-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-blue);
+  margin-bottom: 1.25rem;
+}
+
+.hack-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.hack-card {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hack-card.highlight-card {
+  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(15, 23, 42, 0.85);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.hack-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.hack-icon {
+  font-size: 1.3rem;
+}
+
+.hack-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.hack-sublist {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  padding-left: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.hack-sublist li strong {
+  color: #e2e8f0;
+}
+
+.hack-sublist li em {
+  color: var(--accent-blue);
+  font-style: normal;
+}
+
+/* Suite Tabs Navigation */
+.suite-tabs-nav {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+  overflow-x: auto;
+}
+
+.suite-tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 0.65rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.15s ease-in-out;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.suite-tab-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-main);
+}
+
+.suite-tab-btn.active {
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.4);
+}
+
+.tab-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Module 2: Bank Guard */
+.bank-guard-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.bank-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.section-sub {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin-top: 0.35rem;
+}
+
+.bank-check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+
+.check-box {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.check-box-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.check-icon {
+  font-size: 1.8rem;
+  background: var(--bg-secondary);
+  padding: 0.35rem;
+  border-radius: var(--radius-md);
+}
+
+.check-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.status-indicator {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.status-indicator.ready {
+  color: var(--accent-emerald);
+}
+.status-indicator.danger {
+  color: var(--accent-rose);
+}
+.status-indicator.warn {
+  color: var(--accent-amber);
+}
+
+.check-box-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.check-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hog-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+}
+
+.bank-action-banner {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.15) 0%, rgba(30, 41, 59, 0.9) 100%);
+  border: 1px solid rgba(37, 99, 235, 0.4);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.bank-banner-info h3 {
+  font-size: 1.1rem;
+  color: #fff;
+  margin-bottom: 0.25rem;
+}
+
+.bank-banner-info p {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* Module 3: Debloater */
+.debloat-alert-box {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  color: #e0f2fe;
+  line-height: 1.5;
+}
+
+.badge-safe {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.badge-recommended {
+  background: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.badge-system {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-muted);
+}
+
 /* Mobile & Tablet Responsiveness */
 @media (max-width: 768px) {
   .app-layout {

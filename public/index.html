@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Android Rescue Shield - กู้ภัยมือถือโดนล็อก & ถอนแอปโฆษณา</title>
+  <title>Android Rescue Suite - กู้ภัยมือถือ & ปลดล็อกระบบสารพัดประโยชน์</title>
   <link rel="icon" type="image/png" href="icon.png">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -14,8 +14,8 @@
       <div class="brand">
         <img src="icon.png" alt="Android Rescue Shield" class="brand-logo-img">
         <div>
-          <h1 class="brand-title">Android Rescue Shield</h1>
-          <p class="brand-subtitle">โปรแกรมกู้ภัยมือถือโดนล็อกหน้าจอ & ถอนการติดตั้งแอปโฆษณาแฝงตัว</p>
+          <h1 class="brand-title">Android Rescue Suite</h1>
+          <p class="brand-subtitle">กล่องเครื่องมือช่างกู้ภัยมือถือ • ปราบโฆษณา • ปลดล็อกแอปธนาคาร • ลบแอปขยะติดเครื่อง</p>
         </div>
       </div>
       <div class="header-status">
@@ -33,7 +33,7 @@
         <div class="empty-icon">🔌</div>
         <h2 class="empty-title">กรุณาเชื่อมต่อโทรศัพท์มือถือผ่านสาย USB</h2>
         <p class="empty-desc">
-          เมื่อหน้าจอมือถือถูกขโมยหรือมีโฆษณาเด้งทับตลอดเวลา การควบคุมผ่านสาย USB (ADB) คือวิธีเดียวที่สามารถสั่งปิดและลบแอปได้ 100%
+          เมื่อหน้าจอมือถือถูกขโมย โฆษณาเด้งรัว หรือเลื่อนเอง การควบคุมผ่านสาย USB (ADB) คือวิธีที่สามารถสั่งปิดและลบแอปได้ 100%
         </p>
 
         <div class="setup-steps">
@@ -67,6 +67,51 @@
           </button>
         </div>
         <p id="empty-feedback" class="inline-feedback-text"></p>
+
+        <!-- Technician Field Hacks & Safe Mode Guide Section -->
+        <div class="tech-hacks-container">
+          <h3 class="tech-hacks-title">💡 เคล็ดลับช่าง: สูตรแก้จอค้างก่อนต่อคอม (ถ้ามือถือทัชไม่ได้/โฆษณาเด้งรัว)</h3>
+          
+          <div class="hack-cards-grid">
+            <!-- Hack 1: SIM Cut -->
+            <div class="hack-card">
+              <div class="hack-header">
+                <span class="hack-icon">📴</span>
+                <strong>สูตร 1: ตัดเน็ตทันที (ถอดซิม + ปิด WiFi)</strong>
+              </div>
+              <p class="hack-desc">
+                แอปโฆษณา 90% ต้องใช้อินเทอร์เน็ตในการโหลดโฆษณา แค่ <strong>ใช้เข็มจิ้มถาดซิมออก + เดินให้ห่างจาก WiFi</strong> หน้าจอจะหยุดเด้งโฆษณาทันที มีเวลาเดินไปกดเปิด USB Debugging สบายๆ!
+              </p>
+            </div>
+
+            <!-- Hack 2: Safe Mode -->
+            <div class="hack-card highlight-card">
+              <div class="hack-header">
+                <span class="hack-icon">🛡️</span>
+                <strong>สูตร 2: บูตเข้า "Safe Mode (โหมดปลอดภัย)"</strong>
+              </div>
+              <p class="hack-desc">
+                ใน Safe Mode ระบบจะ <strong>แช่แข็งแอปภายนอก 100%</strong> หน้าจอจะสงบนิ่ง ไร้โฆษณา ไร้อาการเลื่อนเอง:
+              </p>
+              <ul class="hack-sublist">
+                <li><strong>วิธีที่ 1 (ทั่วไป):</strong> กดปุ่ม Power ค้างจนขึ้นเมนูปิดเครื่อง > แตะปุ่ม <em>"ปิดเครื่อง" ค้างไว้ 2 วินาที</em> จะมีปุ่ม Safe Mode โผล่มา</li>
+                <li><strong>วิธีที่ 2 (ปุ่มกด):</strong> ปิดเครื่องสนิท > กดเปิด พอโลโก้ขึ้น ให้ปล่อยปุ่มเปิด แล้วรีบกด <em>"ปุ่มลดเสียง" ค้างไว้</em> จนเครื่องบูตเสร็จ</li>
+                <li><strong>วิธีออกจาก Safe Mode:</strong> แค่กดปุ่ม Power สั่ง <em>"รีสตาร์ทเครื่องปกติ 1 ครั้ง"</em> เครื่องก็กลับมาเป็นโหมดปกติแล้ว!</li>
+              </ul>
+            </div>
+
+            <!-- Hack 3: OTG Mouse -->
+            <div class="hack-card">
+              <div class="hack-header">
+                <span class="hack-icon">🖱️</span>
+                <strong>สูตร 3: ใช้เมาส์คอมฯ เสียบผ่านสาย OTG</strong>
+              </div>
+              <p class="hack-desc">
+                กรณีหน้าจอมือถือถูกทัชสกรีนหลอก หรือทัชไม่ติด เอาเมาส์คอมพิวเตอร์เสียบผ่านสายแปลง OTG เข้าตูดมือถือ จะมี <strong>ลูกศรเมาส์โผล่บนจอ</strong> ใช้คลิกเลื่อนหน้าจอเข้า Settings ได้เลย
+              </p>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- STATE 2: Unauthorized Warning State -->
@@ -113,75 +158,270 @@
           </div>
         </div>
 
-        <!-- Emergency Rescue Hero Banner -->
-        <div class="emergency-banner">
-          <div class="emergency-content">
-            <div class="emergency-header">
-              <span class="emergency-badge">🚨 เมนูกู้ภัยเร่งด่วน</span>
-              <span class="emergency-sub">สำหรับจังหวะที่หน้าจอมือถือโดนล็อกหรือโฆษณาเด้งบัง</span>
-            </div>
-            <div class="emergency-monitor">
-              <span class="monitor-label">แอปที่กำลังเปิดอยู่หน้าสุดในขณะนี้:</span>
-              <code id="top-app-display" class="top-app-code">กำลังตรวจจับ...</code>
-            </div>
-          </div>
-          <div class="emergency-actions">
-            <!-- Single Primary CTA for emergency -->
-            <button id="btn-emergency-kill" class="btn btn-danger btn-large">
-              <span class="btn-icon">⚡</span> สั่งปิดแอปที่บังจอทันที (Force Kill)
-            </button>
-            <button id="btn-kill-ghost" class="btn btn-secondary btn-large" title="ปิดสิทธิ์ Accessibility ทันทีเพื่อหยุดอาการเลื่อนหน้าจอเองหรือแย่งแตะหน้าจอ">
-              <span class="btn-icon">👻</span> หยุดอาการผีสิง (เลื่อนเอง/แย่งกด)
-            </button>
-            <button id="btn-emergency-uninstall" class="btn btn-danger-outline btn-large hidden">
-              <span class="btn-icon">🗑️</span> ถอนการติดตั้งตัวนี้ทันที
-            </button>
-          </div>
-        </div>
+        <!-- Global Inline Message Banner -->
         <div id="emergency-feedback" class="inline-msg"></div>
 
-        <!-- App Scanner & Danger Inspector Section -->
-        <div class="scanner-section">
-          <div class="section-toolbar">
-            <div class="toolbar-left">
-              <h2 class="section-title">📦 รายชื่อแอปพลิเคชัน (3rd-Party Apps)</h2>
-              <span id="apps-count-badge" class="count-badge">0 แอป</span>
-            </div>
-            <div class="toolbar-right">
-              <div class="search-box">
-                <input type="text" id="input-search" placeholder="พิมพ์ค้นหาชื่อ package..." />
+        <!-- Suite Modules Tab Navigation -->
+        <nav class="suite-tabs-nav">
+          <button class="suite-tab-btn active" data-tab="tab-rescue">
+            <span class="tab-icon">🚨</span> โมดูล 1: กู้ภัยปราบแอปป่วนจอ
+          </button>
+          <button class="suite-tab-btn" data-tab="tab-bank">
+            <span class="tab-icon">🏦</span> โมดูล 2: ปลดล็อกแอปธนาคาร & เป๋าตังค์
+          </button>
+          <button class="suite-tab-btn" data-tab="tab-debloat">
+            <span class="tab-icon">🧹</span> โมดูล 3: ลบแอปขยะติดเครื่อง (Debloater)
+          </button>
+          <button class="suite-tab-btn" data-tab="tab-tips">
+            <span class="tab-icon">💡</span> เคล็ดลับช่าง & คู่มือ
+          </button>
+        </nav>
+
+        <!-- ============================================== -->
+        <!-- TAB 1: Rescue Shield (Adware & Ghost Hijacker) -->
+        <!-- ============================================== -->
+        <div id="tab-rescue" class="tab-pane active">
+          <!-- Emergency Rescue Hero Banner -->
+          <div class="emergency-banner">
+            <div class="emergency-content">
+              <div class="emergency-header">
+                <span class="emergency-badge">🚨 เมนูกู้ภัยเร่งด่วน</span>
+                <span class="emergency-sub">สำหรับจังหวะที่หน้าจอมือถือโดนล็อก โฆษณาเด้งบัง หรือจอเลื่อนเอง</span>
               </div>
-              <select id="select-filter" class="custom-select">
-                <option value="all">ทั้งหมด</option>
-                <option value="suspicious">⚠️ แสดงเฉพาะที่น่าสงสัย</option>
-                <option value="dangerous">🔴 อันตรายสูง (High Risk)</option>
-              </select>
-              <button id="btn-scan-deep" class="btn btn-secondary">
-                <span class="btn-icon">🔍</span> สแกนวิเคราะห์ความเสี่ยง
+              <div class="emergency-monitor">
+                <span class="monitor-label">แอปที่กำลังเปิดอยู่หน้าสุดในขณะนี้:</span>
+                <code id="top-app-display" class="top-app-code">กำลังตรวจจับ...</code>
+              </div>
+            </div>
+            <div class="emergency-actions">
+              <button id="btn-emergency-kill" class="btn btn-danger btn-large">
+                <span class="btn-icon">⚡</span> สั่งปิดแอปที่บังจอทันที (Force Kill)
+              </button>
+              <button id="btn-kill-ghost" class="btn btn-secondary btn-large" title="ปิดสิทธิ์ Accessibility ทันทีเพื่อหยุดอาการเลื่อนหน้าจอเองหรือแย่งแตะหน้าจอ">
+                <span class="btn-icon">👻</span> หยุดอาการผีสิง (เลื่อนเอง/แย่งกด)
+              </button>
+              <button id="btn-emergency-uninstall" class="btn btn-danger-outline btn-large hidden">
+                <span class="btn-icon">🗑️</span> ถอนการติดตั้งตัวนี้ทันที
               </button>
             </div>
           </div>
 
-          <!-- Apps Table View -->
-          <div class="table-container">
-            <table class="apps-table">
-              <thead>
-                <tr>
-                  <th>ระดับความเสี่ยง</th>
-                  <th>ชื่อ Package</th>
-                  <th>สิทธิ์อันตรายที่ตรวจพบ</th>
-                  <th>วันที่ติดตั้ง</th>
-                  <th class="th-actions">จัดการ</th>
-                </tr>
-              </thead>
-              <tbody id="apps-tbody">
-                <tr>
-                  <td colspan="5" class="td-loading">
-                    <div class="loading-spinner"></div> กำลังดึงรายชื่อแอปจากโทรศัพท์...
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <!-- App Scanner & Danger Inspector Section -->
+          <div class="scanner-section">
+            <div class="section-toolbar">
+              <div class="toolbar-left">
+                <h2 class="section-title">📦 รายชื่อแอปพลิเคชันบุคคลที่สาม (3rd-Party Apps)</h2>
+                <span id="apps-count-badge" class="count-badge">0 แอป</span>
+              </div>
+              <div class="toolbar-right">
+                <div class="search-box">
+                  <input type="text" id="input-search" placeholder="พิมพ์ค้นหาชื่อ package..." />
+                </div>
+                <select id="select-filter" class="custom-select">
+                  <option value="all">ทั้งหมด</option>
+                  <option value="suspicious">⚠️ แสดงเฉพาะที่น่าสงสัย</option>
+                  <option value="dangerous">🔴 อันตรายสูง (High Risk)</option>
+                </select>
+                <button id="btn-scan-deep" class="btn btn-secondary">
+                  <span class="btn-icon">🔍</span> สแกนวิเคราะห์ความเสี่ยง
+                </button>
+              </div>
+            </div>
+
+            <!-- Apps Table View -->
+            <div class="table-container">
+              <table class="apps-table">
+                <thead>
+                  <tr>
+                    <th>ระดับความเสี่ยง</th>
+                    <th>ชื่อ Package</th>
+                    <th>สิทธิ์อันตรายที่ตรวจพบ</th>
+                    <th>วันที่ติดตั้ง</th>
+                    <th class="th-actions">จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody id="apps-tbody">
+                  <tr>
+                    <td colspan="5" class="td-loading">
+                      <div class="loading-spinner"></div> กำลังดึงรายชื่อแอปจากโทรศัพท์...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 2: Bank & Privacy Guard                    -->
+        <!-- ============================================== -->
+        <div id="tab-bank" class="tab-pane hidden">
+          <div class="bank-guard-card">
+            <div class="bank-card-header">
+              <div>
+                <h2 class="section-title">🏦 ระบบตรวจความพร้อมสำหรับแอปธนาคาร & เป๋าตังค์ (Bank Safety Guard)</h2>
+                <p class="section-sub">
+                  ตรวจจับแอปที่แอบใช้กล้องเบื้องหลัง, มัลแวร์ดักจับหน้าจอ, และสั่งปิดโหมดนักพัฒนาเพื่อเข้าแอปการเงินได้ทันที
+                </p>
+              </div>
+              <button id="btn-bank-refresh" class="btn btn-secondary btn-sm">
+                🔄 สแกนตรวจสอบใหม่
+              </button>
+            </div>
+
+            <!-- 3 Health Check Cards -->
+            <div class="bank-check-grid">
+              <!-- Check 1: Camera -->
+              <div class="check-box" id="box-camera">
+                <div class="check-box-top">
+                  <span class="check-icon">📷</span>
+                  <div class="check-meta">
+                    <strong>เซ็นเซอร์กล้องถ่ายรูป</strong>
+                    <span id="label-camera-status" class="status-indicator">กำลังตรวจสอบ...</span>
+                  </div>
+                </div>
+                <div id="camera-hogs-list" class="check-details"></div>
+              </div>
+
+              <!-- Check 2: Accessibility (Spy / Remote Apps) -->
+              <div class="check-box" id="box-acc">
+                <div class="check-box-top">
+                  <span class="check-icon">👁️</span>
+                  <div class="check-meta">
+                    <strong>สิทธิ์การเข้าถึงพิเศษ (Accessibility)</strong>
+                    <span id="label-acc-status" class="status-indicator">กำลังตรวจสอบ...</span>
+                  </div>
+                </div>
+                <div id="acc-services-list" class="check-details"></div>
+              </div>
+
+              <!-- Check 3: USB Debugging / Developer Options -->
+              <div class="check-box" id="box-adb">
+                <div class="check-box-top">
+                  <span class="check-icon">🔌</span>
+                  <div class="check-meta">
+                    <strong>สถานะการดีบัก USB & โหมดนักพัฒนา</strong>
+                    <span id="label-adb-status" class="status-indicator">เปิดอยู่ (ต้องปิดก่อนเข้าแอปธนาคาร)</span>
+                  </div>
+                </div>
+                <p class="check-box-desc">
+                  แอปธนาคารเกือบทุกแอป (K PLUS, SCB, เป๋าตัง, ทางรัฐ) จะบล็อกไม่ให้เข้าใช้งาน หากเครื่องยังเปิดการดีบัก USB ค้างไว้
+                </p>
+              </div>
+            </div>
+
+            <!-- Single Primary Action for Bank Tab -->
+            <div class="bank-action-banner">
+              <div class="bank-banner-info">
+                <h3>🚀 สั่งปิดการดีบัก USB จากคอมพิวเตอร์</h3>
+                <p>เมื่อจัดการแอปขโมยกล้องเรียบร้อยแล้ว กดปุ่มนี้เพื่อปิด USB Debugging ในมือถือทันที แล้วดึงสายออกเข้าแอปธนาคารได้เลย!</p>
+              </div>
+              <button id="btn-disable-adb" class="btn btn-primary btn-large">
+                <span class="btn-icon">🔒</span> ปิด USB Debugging & ปลดล็อกเข้าแอปธนาคาร
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 3: Universal Debloater                     -->
+        <!-- ============================================== -->
+        <div id="tab-debloat" class="tab-pane hidden">
+          <div class="scanner-section">
+            <div class="section-toolbar">
+              <div class="toolbar-left">
+                <h2 class="section-title">🧹 ลบแอปขยะติดเครื่องจากโรงงาน (Universal Debloater)</h2>
+                <span id="debloat-count-badge" class="count-badge">0 แอประบบ</span>
+              </div>
+              <div class="toolbar-right">
+                <div class="search-box">
+                  <input type="text" id="input-search-debloat" placeholder="ค้นหาชื่อแอป หรือ package..." />
+                </div>
+                <select id="select-filter-debloat" class="custom-select">
+                  <option value="recommended">⭐ แนะนำให้ลบ (ปลอดภัย 100%)</option>
+                  <option value="uninstalled">🔄 แอปที่เคยลบไปแล้ว (กู้คืนได้)</option>
+                  <option value="all">แอประบบทั้งหมด</option>
+                </select>
+                <button id="btn-reload-debloat" class="btn btn-secondary">
+                  <span class="btn-icon">🔄</span> รีโหลดรายชื่อ
+                </button>
+              </div>
+            </div>
+
+            <div class="debloat-alert-box">
+              💡 <strong>ข้อดีของการ Debloat:</strong> ลบแอปขยะที่โรงงานยัดมา (Facebook, เกมแถม, แอปค่ายมือถือ) โดยไม่ต้องรูทเครื่อง! ช่วยให้เครื่องลื่นขึ้น แบตอึดขึ้น และ <em>สามารถกดปุ่ม 'กู้คืน' กลับมาได้ตลอดเวลา</em>
+            </div>
+
+            <!-- Debloat Table -->
+            <div class="table-container">
+              <table class="apps-table">
+                <thead>
+                  <tr>
+                    <th>แอปพลิเคชัน</th>
+                    <th>ชื่อ Package</th>
+                    <th>คำอธิบาย</th>
+                    <th>ความปลอดภัย</th>
+                    <th class="th-actions">จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody id="debloat-tbody">
+                  <tr>
+                    <td colspan="5" class="td-loading">
+                      <div class="loading-spinner"></div> กำลังดึงรายชื่อแอประบบจากโทรศัพท์...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 4: Technician Tips & Safe Mode Guide       -->
+        <!-- ============================================== -->
+        <div id="tab-tips" class="tab-pane hidden">
+          <div class="tech-hacks-container" style="margin-top: 0;">
+            <h2 class="section-title" style="margin-bottom: 1.5rem;">💡 คู่มือช่าง & สูตรแก้จอค้างฉบับเต็ม</h2>
+            
+            <div class="hack-cards-grid">
+              <!-- Tip 1 -->
+              <div class="hack-card">
+                <div class="hack-header">
+                  <span class="hack-icon">📴</span>
+                  <strong>สูตร 1: ตัดเน็ตทันที (ถอดซิม + ปิด WiFi)</strong>
+                </div>
+                <p class="hack-desc">
+                  แอปโฆษณาแทบทุกตัวต้องดึงโฆษณาจากอินเทอร์เน็ต เมื่อเครื่องโดนโฆษณาเด้งรัวจนทัชไม่ติด ให้ <strong>จิ้มถาดซิมการ์ดออกทันที</strong> และเดินห่างจาก WiFi เครื่องจะหยุดเด้งโฆษณาแทบจะทันที
+                </p>
+              </div>
+
+              <!-- Tip 2 -->
+              <div class="hack-card highlight-card">
+                <div class="hack-header">
+                  <span class="hack-icon">🛡️</span>
+                  <strong>สูตร 2: บูตเข้า "Safe Mode" ตามยี่ห้อมือถือ</strong>
+                </div>
+                <p class="hack-desc">
+                  ใน Safe Mode ระบบจะตัดการทำงานของแอปภายนอก 100% หน้าจอจะสงบสุข:
+                </p>
+                <ul class="hack-sublist">
+                  <li><strong>Samsung / Xiaomi / OPPO / Vivo:</strong> กดปุ่มปิดเครื่องค้างไว้จนขึ้นปุ่ม Power บนหน้าจอ จากนั้นแตะปุ่ม "ปิดเครื่อง" หรือ "รีสตาร์ท" ค้างไว้ 2 วินาที จะมีเมนู Safe Mode โผล่มา</li>
+                  <li><strong>วิธีใช้ปุ่มกด (ฮาร์ดแวร์):</strong> ปิดเครื่องให้ดับสนิท > กดปุ่ม Power เปิดเครื่อง พอโลโก้ยี่ห้อขึ้น ให้ปล่อย Power แล้วกด <em>"ปุ่มลดเสียง" ค้างไว้รวดเดียว</em> จนเข้าหน้าจอหลัก</li>
+                  <li><strong>วิธีออกจาก Safe Mode:</strong> กดปุ่ม Power แล้วเลือก <em>"รีสตาร์ทปกติ 1 ครั้ง"</em> เครื่องจะกลับมาเป็นโหมดปกติทันที</li>
+                </ul>
+              </div>
+
+              <!-- Tip 3 -->
+              <div class="hack-card">
+                <div class="hack-header">
+                  <span class="hack-icon">🖱️</span>
+                  <strong>สูตร 3: เสียบเมาส์คอมพิวเตอร์ผ่านสาย OTG</strong>
+                </div>
+                <p class="hack-desc">
+                  ถ้าหน้าจอทัชไม่ติดหรือโดนหลอกทัชสกรีน เอาเมาส์คอมฯ เสียบผ่านหัวแปลง OTG เข้าตูดมือถือ จะมีลูกศรเมาส์โผล่มา ใช้เมาส์คลิกรูดหน้าจอเพื่อไปเปิดโหมดนักพัฒนาหรือถอนการติดตั้งแอปได้ทันที
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>

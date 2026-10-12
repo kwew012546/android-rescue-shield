@@ -1,4 +1,4 @@
-// Android Rescue Shield Frontend Logic
+// Android Rescue Suite Frontend Logic
 
 // App State
 const state = {
@@ -8,7 +8,10 @@ const state = {
   topApp: null,
   pendingUninstallPackage: null,
   isScanning: false,
-  topAppTimer: null
+  topAppTimer: null,
+  activeTab: 'tab-rescue',
+  debloatApps: [],
+  bankData: null
 };
 
 // DOM Elements
@@ -28,19 +31,35 @@ const el = {
   btnRebootSafe: document.getElementById('btn-reboot-safe'),
   btnRebootNormal: document.getElementById('btn-reboot-normal'),
 
-  // Emergency Banner
+  // Global Inline Message
+  emergencyFeedback: document.getElementById('emergency-feedback'),
+
+  // Tab 1: Emergency & Rescue
   topAppDisplay: document.getElementById('top-app-display'),
   btnEmergencyKill: document.getElementById('btn-emergency-kill'),
   btnKillGhost: document.getElementById('btn-kill-ghost'),
   btnEmergencyUninstall: document.getElementById('btn-emergency-uninstall'),
-  emergencyFeedback: document.getElementById('emergency-feedback'),
-
-  // Scanner & Table
   appsCountBadge: document.getElementById('apps-count-badge'),
   inputSearch: document.getElementById('input-search'),
   selectFilter: document.getElementById('select-filter'),
   btnScanDeep: document.getElementById('btn-scan-deep'),
   appsTbody: document.getElementById('apps-tbody'),
+
+  // Tab 2: Bank Guard
+  btnBankRefresh: document.getElementById('btn-bank-refresh'),
+  labelCameraStatus: document.getElementById('label-camera-status'),
+  cameraHogsList: document.getElementById('camera-hogs-list'),
+  labelAccStatus: document.getElementById('label-acc-status'),
+  accServicesList: document.getElementById('acc-services-list'),
+  labelAdbStatus: document.getElementById('label-adb-status'),
+  btnDisableAdb: document.getElementById('btn-disable-adb'),
+
+  // Tab 3: Debloater
+  debloatCountBadge: document.getElementById('debloat-count-badge'),
+  inputSearchDebloat: document.getElementById('input-search-debloat'),
+  selectFilterDebloat: document.getElementById('select-filter-debloat'),
+  btnReloadDebloat: document.getElementById('btn-reload-debloat'),
+  debloatTbody: document.getElementById('debloat-tbody'),
 
   // Buttons for Check
   btnCheckDevice: document.getElementById('btn-check-device'),
@@ -71,6 +90,15 @@ function bindEvents() {
     checkDevice();
   });
 
+  // Tab Switching
+  document.querySelectorAll('.suite-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabId = btn.getAttribute('data-tab');
+      switchTab(tabId);
+    });
+  });
+
+  // Tab 1 Events
   el.btnEmergencyKill.addEventListener('click', handleEmergencyKill);
   if (el.btnKillGhost) {
     el.btnKillGhost.addEventListener('click', handleKillGhost);
@@ -80,16 +108,54 @@ function bindEvents() {
       promptUninstall(state.topApp.package);
     }
   });
-
   el.btnScanDeep.addEventListener('click', runDeepScan);
   el.inputSearch.addEventListener('input', renderAppsTable);
   el.selectFilter.addEventListener('change', renderAppsTable);
 
+  // Tab 2 Events (Bank Guard)
+  if (el.btnBankRefresh) {
+    el.btnBankRefresh.addEventListener('click', loadBankCheck);
+  }
+  if (el.btnDisableAdb) {
+    el.btnDisableAdb.addEventListener('click', handleDisableAdb);
+  }
+
+  // Tab 3 Events (Debloater)
+  if (el.btnReloadDebloat) {
+    el.btnReloadDebloat.addEventListener('click', loadDebloatList);
+  }
+  if (el.inputSearchDebloat) {
+    el.inputSearchDebloat.addEventListener('input', renderDebloatTable);
+  }
+  if (el.selectFilterDebloat) {
+    el.selectFilterDebloat.addEventListener('change', renderDebloatTable);
+  }
+
+  // Quick Actions
   el.btnRebootSafe.addEventListener('click', () => handleReboot('safe-mode'));
   el.btnRebootNormal.addEventListener('click', () => handleReboot('normal'));
 
   el.btnCancelUninstall.addEventListener('click', closeModal);
   el.btnConfirmUninstall.addEventListener('click', executeUninstall);
+}
+
+// Tab Switching Handler
+function switchTab(tabId) {
+  state.activeTab = tabId;
+  document.querySelectorAll('.suite-tab-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-tab') === tabId);
+  });
+  document.querySelectorAll('.tab-pane').forEach(p => {
+    p.classList.toggle('hidden', p.id !== tabId);
+  });
+
+  if (tabId === 'tab-bank') {
+    loadBankCheck();
+  } else if (tabId === 'tab-debloat') {
+    if (state.debloatApps.length === 0) {
+      loadDebloatList();
+    }
+  }
 }
 
 // Inline temporary button feedback helper (Quiet UX)
@@ -170,7 +236,7 @@ function stopTopAppMonitor() {
 }
 
 async function pollTopApp() {
-  if (!state.device) return;
+  if (!state.device || state.activeTab !== 'tab-rescue') return;
   try {
     const res = await fetch('/api/top-app');
     const data = await res.json();
@@ -191,11 +257,10 @@ async function pollTopApp() {
       el.topAppDisplay.textContent = 'ไม่สามารถตรวจจับหน้าจอได้';
       el.btnEmergencyUninstall.classList.add('hidden');
     }
-  } catch (e) {
-    // Silent degradation
-  }
+  } catch (e) {}
 }
 
+// 3. Emergency Kill Action
 async function handleEmergencyKill() {
   const btn = el.btnEmergencyKill;
   const originalText = btn.innerHTML;
@@ -212,7 +277,6 @@ async function handleEmergencyKill() {
 
     if (data.ok) {
       showEmergencyMessage(`✅ ${data.message}`, 'success');
-      // Immediate re-check
       pollTopApp();
     } else {
       showEmergencyMessage(`⚠️ ${data.message}`, 'error');
@@ -241,6 +305,7 @@ async function handleKillGhost() {
     if (data.ok) {
       showEmergencyMessage(`✅ ${data.message}`, 'success');
       pollTopApp();
+      loadAppsList();
     } else {
       showEmergencyMessage(`⚠️ ${data.message}`, 'error');
     }
@@ -257,10 +322,10 @@ function showEmergencyMessage(msg, type) {
   el.emergencyFeedback.className = `inline-msg active ${type}`;
   setTimeout(() => {
     el.emergencyFeedback.className = 'inline-msg';
-  }, 4000);
+  }, 4500);
 }
 
-// 4. Load Apps List
+// 4. Load Apps List (Tab 1)
 async function loadAppsList() {
   el.appsTbody.innerHTML = `
     <tr>
@@ -278,8 +343,6 @@ async function loadAppsList() {
       state.apps = data.apps;
       el.appsCountBadge.textContent = `${data.apps.length} แอป`;
       renderAppsTable();
-
-      // Automatically inspect first 15 newest apps in background for smooth experience
       inspectBatch(data.apps.slice(0, 15));
     } else {
       el.appsTbody.innerHTML = `<tr><td colspan="5" class="td-empty">ไม่สามารถโหลดรายชื่อแอปได้: ${data.message || ''}</td></tr>`;
@@ -289,7 +352,6 @@ async function loadAppsList() {
   }
 }
 
-// Inspect single app
 async function inspectApp(pkgName) {
   if (state.detailedApps.has(pkgName)) {
     return state.detailedApps.get(pkgName);
@@ -309,19 +371,16 @@ async function inspectApp(pkgName) {
   return null;
 }
 
-// Background batch inspection
 async function inspectBatch(appList) {
   for (const app of appList) {
     if (!state.detailedApps.has(app.packageName)) {
       await inspectApp(app.packageName);
-      // Small pause to keep ADB responsive
       await new Promise(r => setTimeout(r, 60));
     }
   }
   renderAppsTable();
 }
 
-// Deep Scan button
 async function runDeepScan() {
   if (state.isScanning) return;
   state.isScanning = true;
@@ -351,7 +410,7 @@ async function runDeepScan() {
   }, 2500);
 }
 
-// 5. Render Apps Table
+// 5. Render Apps Table (Tab 1)
 function renderAppsTable() {
   const query = el.inputSearch.value.trim().toLowerCase();
   const filter = el.selectFilter.value;
@@ -377,7 +436,6 @@ function renderAppsTable() {
     return;
   }
 
-  // Sort: dangerous first, then by package name
   filtered.sort((a, b) => {
     const dA = state.detailedApps.get(a.packageName);
     const dB = state.detailedApps.get(b.packageName);
@@ -391,7 +449,6 @@ function renderAppsTable() {
     const isDeviceAdmin = app.isDeviceAdmin;
     const risk = details ? details.riskLevel : (isDeviceAdmin ? 'dangerous' : 'normal');
 
-    // Risk badge
     let riskBadge = '<span class="badge-risk badge-normal">ทั่วไป</span>';
     if (risk === 'dangerous' || isDeviceAdmin) {
       riskBadge = '<span class="badge-risk badge-danger">🔴 เสี่ยงสูง (Adware/Lock)</span>';
@@ -399,7 +456,6 @@ function renderAppsTable() {
       riskBadge = '<span class="badge-risk badge-warning">🟡 เฝ้าระวัง</span>';
     }
 
-    // Permissions tags
     const tags = [];
     if (isDeviceAdmin) {
       tags.push('<span class="perm-tag tag-danger">🛡️ ล็อก Device Admin</span>');
@@ -455,7 +511,7 @@ function getRiskScore(details, isDeviceAdmin) {
   return score;
 }
 
-// 6. Action: Copy Package Name (Inline Feedback)
+// 6. Action: Copy Package Name
 window.copyPackage = function(pkg, btn) {
   navigator.clipboard.writeText(pkg).then(() => {
     const orig = btn.innerText;
@@ -466,7 +522,7 @@ window.copyPackage = function(pkg, btn) {
   });
 };
 
-// 7. Action: Force Stop Single App
+// 7. Action: Force Stop
 window.forceStopApp = async function(pkg, btn) {
   const orig = btn.innerHTML;
   btn.disabled = true;
@@ -494,7 +550,7 @@ window.forceStopApp = async function(pkg, btn) {
   }, 1500);
 };
 
-// 7.1 Action: Freeze App (Disable completely)
+// 7.1 Action: Freeze App
 window.freezeApp = async function(pkg, btn) {
   const orig = btn.innerHTML;
   btn.disabled = true;
@@ -524,7 +580,7 @@ window.freezeApp = async function(pkg, btn) {
   }, 2000);
 };
 
-// 8. Action: Prompt & Execute Uninstall (Closed-Loop UX)
+// 8. Action: Prompt & Execute Uninstall
 window.promptUninstall = function(pkg) {
   state.pendingUninstallPackage = pkg;
   el.modalPkgName.textContent = pkg;
@@ -553,7 +609,6 @@ async function executeUninstall() {
     const data = await res.json();
 
     if (data.ok) {
-      // Closed-Loop UX: Optimistically remove from local state immediately
       state.apps = state.apps.filter(a => a.packageName !== pkg);
       state.detailedApps.delete(pkg);
       el.appsCountBadge.textContent = `${state.apps.length} แอป`;
@@ -572,7 +627,234 @@ async function executeUninstall() {
   }
 }
 
-// 9. Reboot Actions
+// 9. Module 2: Banking & Privacy Guard
+async function loadBankCheck() {
+  el.labelCameraStatus.textContent = '⏳ กำลังตรวจเซ็นเซอร์กล้อง...';
+  el.labelAccStatus.textContent = '⏳ กำลังตรวจสิทธิ์เข้าถึง...';
+  el.cameraHogsList.innerHTML = '';
+  el.accServicesList.innerHTML = '';
+
+  try {
+    const res = await fetch('/api/bank-check');
+    const data = await res.json();
+    state.bankData = data;
+
+    // 1. Camera check
+    if (data.cameraApps && data.cameraApps.length > 0) {
+      el.labelCameraStatus.className = 'status-indicator danger';
+      el.labelCameraStatus.textContent = `❌ พบ ${data.cameraApps.length} แอปกำลังแอบใช้กล้องอยู่!`;
+      el.cameraHogsList.innerHTML = data.cameraApps.map(pkg => `
+        <div class="hog-item">
+          <code>${escapeHtml(pkg)}</code>
+          <button class="btn btn-danger btn-sm" onclick="forceStopApp('${escapeHtml(pkg)}', this)">🛑 สั่งปิดกล้องทันที</button>
+        </div>
+      `).join('');
+    } else {
+      el.labelCameraStatus.className = 'status-indicator ready';
+      el.labelCameraStatus.textContent = '✅ เซ็นเซอร์กล้องว่าง พร้อมสแกนหน้าปลอดภัย';
+      el.cameraHogsList.innerHTML = '<span style="font-size: 0.82rem; color: #94a3b8;">ไม่มีแอปใดแอบดักจับภาพเบื้องหลัง</span>';
+    }
+
+    // 2. Accessibility check
+    if (data.accessibilityServices && data.accessibilityServices.length > 0) {
+      el.labelAccStatus.className = 'status-indicator warn';
+      el.labelAccStatus.textContent = `⚠️ พบ ${data.accessibilityServices.length} สิทธิ์ที่เปิดค้างไว้`;
+      el.accServicesList.innerHTML = `
+        <div style="font-size: 0.82rem; color: #fde68a;">
+          ${data.accessibilityServices.map(s => `<div>• ${escapeHtml(s)}</div>`).join('')}
+        </div>
+        <button class="btn btn-secondary btn-sm" style="margin-top: 0.5rem;" onclick="handleKillGhost()">👻 ปิดสิทธิ์ทั้งหมดทันที</button>
+      `;
+    } else {
+      el.labelAccStatus.className = 'status-indicator ready';
+      el.labelAccStatus.textContent = '✅ ปลอดภัย ไม่พบแอปดักจับหรือแอบควบคุมจอ';
+      el.accServicesList.innerHTML = '<span style="font-size: 0.82rem; color: #94a3b8;">ปลอดภัยจากแอปรีโมทและโทรจันดูดเงิน</span>';
+    }
+
+    // 3. ADB Status
+    if (data.adbEnabled) {
+      el.labelAdbStatus.className = 'status-indicator warn';
+      el.labelAdbStatus.textContent = '⚠️ เปิดอยู่ (ต้องกดปิดด้านล่างก่อนเข้าแอปธนาคาร)';
+    } else {
+      el.labelAdbStatus.className = 'status-indicator ready';
+      el.labelAdbStatus.textContent = '✅ ปิดแล้ว พร้อมเข้าแอปธนาคารได้ทันที';
+    }
+  } catch (err) {
+    el.labelCameraStatus.textContent = 'เกิดข้อผิดพลาดในการตรวจสอบ';
+  }
+}
+
+async function handleDisableAdb() {
+  if (!confirm('คุณต้องการสั่งปิดการดีบัก USB จากคอมพิวเตอร์ใช่หรือไม่?\n\n(หลังจากกดปุ่มนี้ คอมพิวเตอร์จะตัดการเชื่อมต่อ ให้ดึงสายออกและเข้าแอปธนาคารได้ทันที)')) return;
+
+  const btn = el.btnDisableAdb;
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="loading-spinner"></span> กำลังส่งคำสั่งปิด...`;
+
+  try {
+    const res = await fetch('/api/disable-adb', { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      showEmergencyMessage(`✅ ${data.message}`, 'success');
+      el.labelAdbStatus.className = 'status-indicator ready';
+      el.labelAdbStatus.textContent = '✅ ปิดสำเร็จแล้ว สามารถดึงสายออกได้เลย';
+      setTimeout(checkDevice, 2000);
+    } else {
+      showEmergencyMessage(`❌ ${data.message}`, 'error');
+    }
+  } catch (e) {
+    showEmergencyMessage(`❌ เกิดข้อผิดพลาด`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
+}
+
+// 10. Module 3: Universal Debloater
+async function loadDebloatList() {
+  el.debloatTbody.innerHTML = `
+    <tr>
+      <td colspan="5" class="td-loading">
+        <div class="loading-spinner"></div> กำลังดึงรายชื่อแอประบบ (System Bloatware)...
+      </td>
+    </tr>
+  `;
+
+  try {
+    const res = await fetch('/api/debloat-list');
+    const data = await res.json();
+    if (data.ok && Array.isArray(data.packages)) {
+      state.debloatApps = data.packages;
+      el.debloatCountBadge.textContent = `${data.packages.length} แอประบบ`;
+      renderDebloatTable();
+    } else {
+      el.debloatTbody.innerHTML = `<tr><td colspan="5" class="td-empty">ไม่สามารถโหลดรายชื่อได้: ${data.message || ''}</td></tr>`;
+    }
+  } catch (e) {
+    el.debloatTbody.innerHTML = `<tr><td colspan="5" class="td-empty">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>`;
+  }
+}
+
+function renderDebloatTable() {
+  const query = (el.inputSearchDebloat ? el.inputSearchDebloat.value : '').trim().toLowerCase();
+  const filter = el.selectFilterDebloat ? el.selectFilterDebloat.value : 'recommended';
+
+  let list = state.debloatApps.filter(app => {
+    const match = !query || app.packageName.toLowerCase().includes(query) || (app.name && app.name.toLowerCase().includes(query));
+    if (!match) return false;
+
+    if (filter === 'recommended') {
+      return (app.safety === 'safe' || app.safety === 'recommended') && !app.isUninstalled;
+    }
+    if (filter === 'uninstalled') {
+      return app.isUninstalled;
+    }
+    return true; // all
+  });
+
+  if (list.length === 0) {
+    el.debloatTbody.innerHTML = `<tr><td colspan="5" class="td-empty">ไม่พบแอปตามเงื่อนไขที่ค้นหา</td></tr>`;
+    return;
+  }
+
+  // Sort known first, then by name
+  list.sort((a, b) => {
+    if (a.isKnown && !b.isKnown) return -1;
+    if (!a.isKnown && b.isKnown) return 1;
+    return a.packageName.localeCompare(b.packageName);
+  });
+
+  const rows = list.map(app => {
+    let safetyBadge = '<span class="badge-risk badge-system">System</span>';
+    if (app.safety === 'safe') {
+      safetyBadge = '<span class="badge-risk badge-safe">🟢 ปลอดภัย ลบได้เลย</span>';
+    } else if (app.safety === 'recommended') {
+      safetyBadge = '<span class="badge-risk badge-recommended">🟡 แนะนำหากไม่ใช้</span>';
+    }
+
+    const actionBtn = app.isUninstalled
+      ? `<button class="btn btn-secondary btn-sm" onclick="debloatRestore('${escapeHtml(app.packageName)}', this)">🔄 กู้คืน (Restore)</button>`
+      : `<button class="btn btn-danger btn-sm" onclick="debloatUninstall('${escapeHtml(app.packageName)}', this)">🗑️ ลบแอปนี้</button>`;
+
+    return `
+      <tr>
+        <td>
+          <strong>${escapeHtml(app.name)}</strong>
+          <span style="font-size: 0.75rem; color: #94a3b8; display: block;">${escapeHtml(app.brand)}</span>
+        </td>
+        <td><code class="pkg-code">${escapeHtml(app.packageName)}</code></td>
+        <td style="font-size: 0.85rem; color: #cbd5e1;">${escapeHtml(app.desc)}</td>
+        <td>${safetyBadge}</td>
+        <td class="td-actions">${actionBtn}</td>
+      </tr>
+    `;
+  }).join('');
+
+  el.debloatTbody.innerHTML = rows;
+}
+
+window.debloatUninstall = async function(pkg, btn) {
+  if (!confirm(`คุณต้องการลบแอประบบ "${pkg}" ออกจากผู้ใช้นี้ใช่หรือไม่?\n\n(คุณสามารถกู้คืนกลับมาได้ตลอดเวลา)`)) return;
+
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerText = '⏳';
+
+  try {
+    const res = await fetch('/api/debloat-uninstall', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ package: pkg })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showEmergencyMessage(`✅ ${data.message}`, 'success');
+      const item = state.debloatApps.find(a => a.packageName === pkg);
+      if (item) item.isUninstalled = true;
+      renderDebloatTable();
+    } else {
+      showEmergencyMessage(`❌ ${data.message}`, 'error');
+      btn.innerHTML = orig;
+      btn.disabled = false;
+    }
+  } catch (e) {
+    showEmergencyMessage('❌ เกิดข้อผิดพลาด', 'error');
+    btn.innerHTML = orig;
+    btn.disabled = false;
+  }
+};
+
+window.debloatRestore = async function(pkg, btn) {
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerText = '⏳';
+
+  try {
+    const res = await fetch('/api/debloat-restore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ package: pkg })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showEmergencyMessage(`✅ ${data.message}`, 'success');
+      const item = state.debloatApps.find(a => a.packageName === pkg);
+      if (item) item.isUninstalled = false;
+      renderDebloatTable();
+    } else {
+      showEmergencyMessage(`❌ ${data.message}`, 'error');
+      btn.innerHTML = orig;
+      btn.disabled = false;
+    }
+  } catch (e) {
+    showEmergencyMessage('❌ เกิดข้อผิดพลาด', 'error');
+    btn.innerHTML = orig;
+    btn.disabled = false;
+  }
+};
+
+// 11. Reboot Actions
 async function handleReboot(mode) {
   const label = mode === 'safe-mode' ? 'Safe Mode' : 'รีสตาร์ทปกติ';
   if (!confirm(`คุณต้องการสั่งให้โทรศัพท์มือถือเข้าสู่ "${label}" ใช่หรือไม่?`)) return;
@@ -586,7 +868,6 @@ async function handleReboot(mode) {
     const data = await res.json();
     if (data.ok) {
       showEmergencyMessage(`✅ ${data.message}`, 'success');
-      // After reboot, connection will drop
       setTimeout(checkDevice, 2000);
     } else {
       showEmergencyMessage(`❌ ${data.message}`, 'error');

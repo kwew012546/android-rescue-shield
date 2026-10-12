@@ -70,6 +70,46 @@ const SYSTEM_LAUNCHERS = new Set([
   'com.motorola.launcher3'
 ]);
 
+// Curated database of known bloatware for Module 3 (Universal Debloater)
+const BLOATWARE_DB = {
+  // Facebook
+  'com.facebook.katana': { name: 'Facebook', safety: 'safe', brand: 'Facebook', desc: 'แอปหลัก Facebook ที่ฝังมากับเครื่อง' },
+  'com.facebook.services': { name: 'Facebook Services', safety: 'safe', brand: 'Facebook', desc: 'บริการเบื้องหลังของ Facebook แอบกินแบต' },
+  'com.facebook.system': { name: 'Facebook App Installer', safety: 'safe', brand: 'Facebook', desc: 'ตัวติดตั้งแอปของ Facebook ฝังมากับระบบ' },
+  'com.facebook.appmanager': { name: 'Facebook App Manager', safety: 'safe', brand: 'Facebook', desc: 'ตัวจัดการอัปเดตของ Facebook' },
+  // Netflix
+  'com.netflix.mediaclient': { name: 'Netflix', safety: 'safe', brand: 'Netflix', desc: 'แอปดูภาพยนตร์ Netflix ติดมากับเครื่อง' },
+  'com.netflix.partner.activation': { name: 'Netflix Activation', safety: 'safe', brand: 'Netflix', desc: 'เซอร์วิสพาร์ทเนอร์ของ Netflix' },
+  // Microsoft
+  'com.microsoft.skydrive': { name: 'OneDrive', safety: 'safe', brand: 'Microsoft', desc: 'คลาวด์ไดรฟ์ของ Microsoft' },
+  'com.microsoft.office.officehubrow': { name: 'Microsoft 365 (Office)', safety: 'safe', brand: 'Microsoft', desc: 'ชุดโปรแกรม Office ติดเครื่อง' },
+  'com.linkedin.android': { name: 'LinkedIn', safety: 'safe', brand: 'Microsoft', desc: 'แอปเครือข่ายสังคมธุรกิจ' },
+  // Xiaomi / HyperOS
+  'com.miui.cleanmaster': { name: 'Mi Cleaner (CleanMaster)', safety: 'safe', brand: 'Xiaomi', desc: 'ตัวล้างขยะของ Cheetah Mobile มีโฆษณาแฝง' },
+  'com.miui.analytics': { name: 'MIUI Analytics', safety: 'safe', brand: 'Xiaomi', desc: 'ระบบดักเก็บข้อมูลและพฤติกรรมของ Xiaomi' },
+  'com.miui.msa.global': { name: 'MIUI System Ads (MSA)', safety: 'safe', brand: 'Xiaomi', desc: 'ตัวการยิงโฆษณาในรอม Xiaomi!' },
+  'com.xiaomi.glgm': { name: 'Games Center (Xiaomi)', safety: 'safe', brand: 'Xiaomi', desc: 'ศูนย์เกมแถมของเสียวหมี่ มีแจ้งเตือนสแปม' },
+  'com.miui.bugreport': { name: 'Mi Bug Report', safety: 'safe', brand: 'Xiaomi', desc: 'ระบบส่งรายงานข้อผิดพลาด กินแบตเบื้องหลัง' },
+  'com.miui.player': { name: 'Mi Music', safety: 'recommended', brand: 'Xiaomi', desc: 'เครื่องเล่นเพลงของ Xiaomi มักมีโฆษณา' },
+  'com.mi.globalbrowser': { name: 'Mi Browser', safety: 'recommended', brand: 'Xiaomi', desc: 'เบราว์เซอร์ของ Xiaomi กินแรมและแจ้งเตือนเยอะ' },
+  // Samsung
+  'com.samsung.android.bixby.agent': { name: 'Bixby Voice / Agent', safety: 'safe', brand: 'Samsung', desc: 'ผู้ช่วยเสียง Bixby หากไม่ใช้งานลบได้' },
+  'com.samsung.android.bixby.wakeup': { name: 'Bixby Wakeup', safety: 'safe', brand: 'Samsung', desc: 'เซอร์วิสรอรับฟังเสียงเรียก Bixby' },
+  'com.samsung.android.game.gamehome': { name: 'Gaming Hub (Game Launcher)', safety: 'safe', brand: 'Samsung', desc: 'ศูนย์รวมเกมของซัมซุง' },
+  'com.samsung.android.spay': { name: 'Samsung Pay / Wallet', safety: 'recommended', brand: 'Samsung', desc: 'ระบบกระเป๋าเงินซัมซุง หากไม่ใช้ลบได้' },
+  'com.sec.android.app.sbrowser': { name: 'Samsung Internet', safety: 'recommended', brand: 'Samsung', desc: 'เบราว์เซอร์ซัมซุง (หากใช้ Chrome อยู่แล้ว)' },
+  'com.samsung.android.kidsinstaller': { name: 'Samsung Kids Mode', safety: 'safe', brand: 'Samsung', desc: 'โหมดสำหรับเด็ก' },
+  // Google
+  'com.google.android.apps.tachyon': { name: 'Google Meet (Duo)', safety: 'safe', brand: 'Google', desc: 'แอปวิดีโอคอลของกูเกิล' },
+  'com.google.android.apps.youtube.music': { name: 'YouTube Music', safety: 'recommended', brand: 'Google', desc: 'แอปฟังเพลง YouTube Music' },
+  'com.google.android.videos': { name: 'Google TV', safety: 'safe', brand: 'Google', desc: 'แอปดูภาพยนตร์ของ Google' },
+  'com.google.android.projection.gearhead': { name: 'Android Auto', safety: 'recommended', brand: 'Google', desc: 'ระบบเชื่อมต่อหน้าจอรถยนต์ หากไม่มีรถลบได้' },
+  // Carriers (TH)
+  'com.ais.mimo.ais5g': { name: 'myAIS', safety: 'safe', brand: 'Carrier', desc: 'แอปผู้ให้บริการเครือข่าย AIS' },
+  'th.co.crie.truelifetv.trueid': { name: 'TrueID', safety: 'safe', brand: 'Carrier', desc: 'แอปบันเทิงของ True' },
+  'th.co.dtac.allinone': { name: 'dtac app', safety: 'safe', brand: 'Carrier', desc: 'แอปเครือข่าย dtac' }
+};
+
 // Helper to parse JSON body
 function parseJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -498,6 +538,166 @@ async function handleApi(req, res, pathname) {
     return sendJson(res, 200, {
       ok: true,
       message: mode === 'safe-mode' ? 'กำลังรีสตาร์ทมือถือเข้าสู่ Safe Mode...' : 'กำลังรีสตาร์ทมือถือ...'
+    });
+  }
+
+  // ==========================================
+  // MODULE 2: Banking & Privacy Guard APIs
+  // ==========================================
+
+  // GET /api/bank-check - Check camera hogs, accessibility apps, and USB debugging status
+  if (pathname === '/api/bank-check' && req.method === 'GET') {
+    const [camRes, accRes, adbRes, devRes] = await Promise.all([
+      runAdb(['shell', 'dumpsys', 'camera']),
+      runAdb(['shell', 'settings', 'get', 'secure', 'enabled_accessibility_services']),
+      runAdb(['shell', 'settings', 'get', 'global', 'adb_enabled']),
+      runAdb(['shell', 'settings', 'get', 'global', 'development_settings_enabled'])
+    ]);
+
+    // Parse camera clients
+    const cameraApps = new Set();
+    if (camRes.ok) {
+      const text = camRes.stdout;
+      // Match active clients in dumpsys camera
+      const m1 = text.matchAll(/Client\[\d+\]\s*\([^\)]*,\s*([a-zA-Z0-9_.]+)/g);
+      for (const match of m1) {
+        if (match[1] && !match[1].includes('android.hardware') && !match[1].includes('mediaserver')) {
+          cameraApps.add(match[1]);
+        }
+      }
+      const m2 = text.matchAll(/clientPackageName\s*=\s*([a-zA-Z0-9_.]+)/g);
+      for (const match of m2) {
+        if (match[1] && !match[1].includes('android.hardware') && !match[1].includes('mediaserver')) {
+          cameraApps.add(match[1]);
+        }
+      }
+      const m3 = text.matchAll(/User:\s*([a-zA-Z0-9_.]+)/g);
+      for (const match of m3) {
+        if (match[1] && match[1].includes('.')) {
+          cameraApps.add(match[1]);
+        }
+      }
+    }
+
+    // Parse accessibility
+    const rawAcc = (accRes.stdout || '').trim();
+    const accServices = rawAcc && rawAcc !== 'null' ? rawAcc.split(':').filter(Boolean) : [];
+
+    const adbEnabled = (adbRes.stdout || '').trim() === '1';
+    const devSettingsEnabled = (devRes.stdout || '').trim() === '1';
+
+    const isBankReady = cameraApps.size === 0 && accServices.length === 0 && !adbEnabled;
+
+    return sendJson(res, 200, {
+      ok: true,
+      cameraApps: Array.from(cameraApps),
+      accessibilityServices: accServices,
+      adbEnabled,
+      devSettingsEnabled,
+      isBankReady
+    });
+  }
+
+  // POST /api/disable-adb - One-click disable USB Debugging & Dev Options to unblock banking apps
+  if (pathname === '/api/disable-adb' && req.method === 'POST') {
+    await runAdb(['shell', 'settings', 'put', 'global', 'adb_enabled', '0']);
+    await runAdb(['shell', 'settings', 'put', 'global', 'development_settings_enabled', '0']);
+    return sendJson(res, 200, {
+      ok: true,
+      message: 'ปิดโหมดการดีบัก USB และโหมดนักพัฒนาเรียบร้อยแล้ว! สามารถดึงสายออกแล้วเข้าแอปเป๋าตัง/ธนาคารได้ทันที'
+    });
+  }
+
+  // ==========================================
+  // MODULE 3: Universal Debloater APIs
+  // ==========================================
+
+  // GET /api/debloat-list - Get all system packages and match against known bloatware
+  if (pathname === '/api/debloat-list' && req.method === 'GET') {
+    const [sysRes, uninstalledRes] = await Promise.all([
+      runAdb(['shell', 'pm', 'list', 'packages', '-s', '-f']),
+      runAdb(['shell', 'pm', 'list', 'packages', '-u', '-d'])
+    ]);
+
+    if (!sysRes.ok) {
+      return sendJson(res, 500, { ok: false, message: 'ไม่สามารถดึงรายชื่อแอประบบได้: ' + sysRes.stderr });
+    }
+
+    const uninstalledSet = new Set();
+    if (uninstalledRes.ok) {
+      uninstalledRes.stdout.split('\n').forEach(line => {
+        const p = line.trim().replace(/^package:/, '');
+        if (p) uninstalledSet.add(p);
+      });
+    }
+
+    const lines = sysRes.stdout.split('\n').map(l => l.trim()).filter(l => l.startsWith('package:'));
+    const packages = [];
+
+    for (const line of lines) {
+      const clean = line.replace(/^package:/, '');
+      const eqIdx = clean.lastIndexOf('=');
+      const pkgName = eqIdx !== -1 ? clean.substring(eqIdx + 1) : clean;
+
+      const known = BLOATWARE_DB[pkgName];
+      packages.push({
+        packageName: pkgName,
+        name: known ? known.name : pkgName,
+        desc: known ? known.desc : 'แอปพลิเคชันระบบ',
+        brand: known ? known.brand : 'System',
+        safety: known ? known.safety : 'system', // safe, recommended, system
+        isKnown: !!known,
+        isUninstalled: uninstalledSet.has(pkgName)
+      });
+    }
+
+    return sendJson(res, 200, {
+      ok: true,
+      totalCount: packages.length,
+      packages
+    });
+  }
+
+  // POST /api/debloat-uninstall - Uninstall system bloatware via user 0
+  if (pathname === '/api/debloat-uninstall' && req.method === 'POST') {
+    const body = await parseJsonBody(req);
+    const pkg = body.package;
+    if (!pkg) return sendJson(res, 400, { ok: false, message: 'กรุณาระบุ package' });
+
+    // Force stop first
+    await runAdb(['shell', 'am', 'force-stop', pkg]);
+
+    const unRes = await runAdb(['shell', 'pm', 'uninstall', '-k', '--user', '0', pkg]);
+    if (unRes.ok && unRes.stdout.includes('Success')) {
+      return sendJson(res, 200, {
+        ok: true,
+        package: pkg,
+        message: `ลบ ${pkg} ออกจากผู้ใช้เรียบร้อยแล้ว (สามารถกู้คืนได้ตลอดเวลา)`
+      });
+    }
+    return sendJson(res, 500, {
+      ok: false,
+      message: 'ลบแอประบบไม่สำเร็จ: ' + (unRes.stderr || unRes.stdout)
+    });
+  }
+
+  // POST /api/debloat-restore - Restore uninstalled system package
+  if (pathname === '/api/debloat-restore' && req.method === 'POST') {
+    const body = await parseJsonBody(req);
+    const pkg = body.package;
+    if (!pkg) return sendJson(res, 400, { ok: false, message: 'กรุณาระบุ package' });
+
+    const resRest = await runAdb(['shell', 'cmd', 'package', 'install-existing', pkg]);
+    if (resRest.ok && (resRest.stdout.includes('installed') || !resRest.stdout.includes('Error'))) {
+      return sendJson(res, 200, {
+        ok: true,
+        package: pkg,
+        message: `กู้คืน ${pkg} กลับมาใช้งานได้ตามปกติแล้ว`
+      });
+    }
+    return sendJson(res, 500, {
+      ok: false,
+      message: 'กู้คืนแอปไม่สำเร็จ: ' + (resRest.stderr || resRest.stdout)
     });
   }
 
