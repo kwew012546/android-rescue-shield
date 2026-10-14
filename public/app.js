@@ -63,7 +63,38 @@ const el = {
 
   // Buttons for Check
   btnCheckDevice: document.getElementById('btn-check-device'),
+  btnCheckFastboot: document.getElementById('btn-check-fastboot'),
   btnRetryAuth: document.getElementById('btn-retry-auth'),
+  btnRebootFastboot: document.getElementById('btn-reboot-fastboot'),
+  btnRebootRecovery: document.getElementById('btn-reboot-recovery'),
+
+  // Tab 4: Flasher & Sideload
+  fbModeBadge: document.getElementById('fb-mode-badge'),
+  fbProductBadge: document.getElementById('fb-product-badge'),
+  fbUnlockBadge: document.getElementById('fb-unlock-badge'),
+  fbSlotBadge: document.getElementById('fb-slot-badge'),
+  btnFbRefresh: document.getElementById('btn-fb-refresh'),
+  btnRebootToBootloader: document.getElementById('btn-reboot-to-bootloader'),
+  btnRebootToRecovery: document.getElementById('btn-reboot-to-recovery'),
+  btnRebootToSystem: document.getElementById('btn-reboot-to-system'),
+  fbFilePath: document.getElementById('fb-file-path'),
+  fbFileBrowser: document.getElementById('fb-file-browser'),
+  btnBrowseImg: document.getElementById('btn-browse-img'),
+  fbPartitionSelect: document.getElementById('fb-partition-select'),
+  fbCustomPartition: document.getElementById('fb-custom-partition'),
+  fbDisableVerity: document.getElementById('fb-disable-verity'),
+  btnExecuteFlash: document.getElementById('btn-execute-flash'),
+  btnExecuteBoot: document.getElementById('btn-execute-boot'),
+  sideloadFilePath: document.getElementById('sideload-file-path'),
+  sideloadFileBrowser: document.getElementById('sideload-file-browser'),
+  btnBrowseZip: document.getElementById('btn-browse-zip'),
+  btnExecuteSideload: document.getElementById('btn-execute-sideload'),
+  btnSlotA: document.getElementById('btn-slot-a'),
+  btnSlotB: document.getElementById('btn-slot-b'),
+  btnEraseCache: document.getElementById('btn-erase-cache'),
+  terminalBody: document.getElementById('terminal-body'),
+  btnClearTerminal: document.getElementById('btn-clear-terminal'),
+  btnCopyTerminal: document.getElementById('btn-copy-terminal'),
 
   // Modal
   modalUninstall: document.getElementById('modal-uninstall'),
@@ -132,8 +163,106 @@ function bindEvents() {
   }
 
   // Quick Actions
-  el.btnRebootSafe.addEventListener('click', () => handleReboot('safe-mode'));
-  el.btnRebootNormal.addEventListener('click', () => handleReboot('normal'));
+  if (el.btnRebootSafe) el.btnRebootSafe.addEventListener('click', () => handleReboot('safe-mode'));
+  if (el.btnRebootNormal) el.btnRebootNormal.addEventListener('click', () => handleReboot('normal'));
+  if (el.btnRebootFastboot) el.btnRebootFastboot.addEventListener('click', () => handleReboot('bootloader'));
+  if (el.btnRebootRecovery) el.btnRebootRecovery.addEventListener('click', () => handleReboot('recovery'));
+
+  if (el.btnCheckFastboot) {
+    el.btnCheckFastboot.addEventListener('click', () => {
+      setInlineButtonFeedback(el.btnCheckFastboot, '⏳ กำลังตรวจหา Fastboot...');
+      checkFastbootMode();
+    });
+  }
+
+  // Tab 4: Flasher & Sideload Events
+  if (el.btnFbRefresh) {
+    el.btnFbRefresh.addEventListener('click', () => {
+      setInlineButtonFeedback(el.btnFbRefresh, '⏳ รีเฟรช...');
+      loadFastbootInfo();
+    });
+  }
+
+  if (el.btnRebootToBootloader) {
+    el.btnRebootToBootloader.addEventListener('click', () => handleFastbootReboot('bootloader'));
+  }
+  if (el.btnRebootToRecovery) {
+    el.btnRebootToRecovery.addEventListener('click', () => handleFastbootReboot('recovery'));
+  }
+  if (el.btnRebootToSystem) {
+    el.btnRebootToSystem.addEventListener('click', () => handleFastbootReboot('system'));
+  }
+
+  // File browser & auto-detect for Image
+  if (el.btnBrowseImg && el.fbFileBrowser) {
+    el.btnBrowseImg.addEventListener('click', () => el.fbFileBrowser.click());
+    el.fbFileBrowser.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        // Browsers in desktop mode give file.name, and if local or full path provided:
+        el.fbFilePath.value = file.name;
+        autoDetectPartition(file.name);
+        appendTerminal(`เลือกไฟล์: ${file.name} (ขนาด ${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+      }
+    });
+  }
+
+  if (el.fbFilePath) {
+    el.fbFilePath.addEventListener('input', (e) => {
+      autoDetectPartition(e.target.value);
+    });
+  }
+
+  if (el.fbPartitionSelect) {
+    el.fbPartitionSelect.addEventListener('change', (e) => {
+      if (el.fbCustomPartition) {
+        el.fbCustomPartition.classList.toggle('hidden', e.target.value !== 'custom');
+      }
+    });
+  }
+
+  if (el.btnExecuteFlash) {
+    el.btnExecuteFlash.addEventListener('click', handleFlashImage);
+  }
+  if (el.btnExecuteBoot) {
+    el.btnExecuteBoot.addEventListener('click', handleFastbootBoot);
+  }
+
+  // Sideload Events
+  if (el.btnBrowseZip && el.sideloadFileBrowser) {
+    el.btnBrowseZip.addEventListener('click', () => el.sideloadFileBrowser.click());
+    el.sideloadFileBrowser.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        el.sideloadFilePath.value = file.name;
+        appendTerminal(`เลือกไฟล์ Sideload: ${file.name} (ขนาด ${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+      }
+    });
+  }
+
+  if (el.btnExecuteSideload) {
+    el.btnExecuteSideload.addEventListener('click', handleSideload);
+  }
+
+  // Unbrick Utilities
+  if (el.btnSlotA) el.btnSlotA.addEventListener('click', () => handleSwitchSlot('a'));
+  if (el.btnSlotB) el.btnSlotB.addEventListener('click', () => handleSwitchSlot('b'));
+  if (el.btnEraseCache) el.btnEraseCache.addEventListener('click', handleEraseCache);
+
+  // Terminal Controls
+  if (el.btnClearTerminal) {
+    el.btnClearTerminal.addEventListener('click', () => {
+      if (el.terminalBody) el.terminalBody.textContent = '[SYSTEM] ล้างหน้าต่างเทอร์มินัลเรียบร้อย';
+    });
+  }
+  if (el.btnCopyTerminal) {
+    el.btnCopyTerminal.addEventListener('click', () => {
+      if (el.terminalBody) {
+        navigator.clipboard.writeText(el.terminalBody.textContent);
+        setInlineButtonFeedback(el.btnCopyTerminal, '✅ คัดลอกแล้ว');
+      }
+    });
+  }
 
   el.btnCancelUninstall.addEventListener('click', closeModal);
   el.btnConfirmUninstall.addEventListener('click', executeUninstall);
@@ -155,6 +284,8 @@ function switchTab(tabId) {
     if (state.debloatApps.length === 0) {
       loadDebloatList();
     }
+  } else if (tabId === 'tab-flasher') {
+    loadFastbootInfo();
   }
 }
 
@@ -181,6 +312,27 @@ async function checkDevice() {
       updateDeviceHeader(data);
       startTopAppMonitor();
       loadAppsList();
+    } else if (data.connected && data.state === 'fastboot') {
+      state.device = data;
+      showState('connected');
+      updateHeaderPill('fastboot', '⚡ โหมด Fastboot');
+      el.devName.textContent = 'อุปกรณ์ Fastboot (Bootloader)';
+      el.devAndroid.textContent = 'Fastboot Protocol';
+      el.devSerial.textContent = `ID: ${data.serial || '-'}`;
+      el.devBattery.textContent = 'โหมดแฟลชเครื่อง';
+      stopTopAppMonitor();
+      switchTab('tab-flasher');
+      loadFastbootInfo();
+    } else if (data.connected && (data.state === 'recovery' || data.state === 'sideload')) {
+      state.device = data;
+      showState('connected');
+      updateHeaderPill('fastboot', `โหมด ${data.state.toUpperCase()}`);
+      el.devName.textContent = `โหมด ${data.state.toUpperCase()}`;
+      el.devAndroid.textContent = 'Recovery Protocol';
+      el.devSerial.textContent = `ID: ${data.serial || '-'}`;
+      el.devBattery.textContent = 'พร้อมรับ Sideload';
+      stopTopAppMonitor();
+      switchTab('tab-flasher');
     } else if (data.state === 'unauthorized') {
       state.device = null;
       showState('unauthorized');
@@ -199,6 +351,30 @@ async function checkDevice() {
     showState('disconnected');
     updateHeaderPill('disconnected', 'เซิร์ฟเวอร์ขัดข้อง');
     stopTopAppMonitor();
+  }
+}
+
+async function checkFastbootMode() {
+  try {
+    const res = await fetch('/api/fastboot/devices');
+    const data = await res.json();
+    if (data.ok && data.connected && data.devices.length > 0) {
+      const dev = data.devices[0];
+      state.device = { connected: true, state: 'fastboot', serial: dev.serial };
+      showState('connected');
+      updateHeaderPill('fastboot', '⚡ โหมด Fastboot');
+      el.devName.textContent = 'อุปกรณ์ Fastboot (Bootloader)';
+      el.devAndroid.textContent = 'Fastboot Protocol';
+      el.devSerial.textContent = `ID: ${dev.serial}`;
+      el.devBattery.textContent = 'โหมดแฟลชเครื่อง';
+      stopTopAppMonitor();
+      switchTab('tab-flasher');
+      loadFastbootInfo();
+    } else {
+      el.emptyFeedback.textContent = '⚠️ ยังไม่พบอุปกรณ์ในโหมด Fastboot กรุณากดปุ่ม Power + ลดเสียง พร้อมกันจนหน้าจอขึ้น Fastboot';
+    }
+  } catch (err) {
+    el.emptyFeedback.textContent = `⚠️ ข้อผิดพลาด: ${err.message}`;
   }
 }
 
@@ -854,9 +1030,14 @@ window.debloatRestore = async function(pkg, btn) {
   }
 };
 
-// 11. Reboot Actions
+// 11. Reboot Actions (ADB Mode)
 async function handleReboot(mode) {
-  const label = mode === 'safe-mode' ? 'Safe Mode' : 'รีสตาร์ทปกติ';
+  let label = 'รีสตาร์ทปกติ';
+  if (mode === 'safe-mode') label = 'Safe Mode (โหมดปลอดภัย)';
+  else if (mode === 'bootloader') label = 'Fastboot / Bootloader';
+  else if (mode === 'recovery') label = 'Recovery Mode';
+  else if (mode === 'fastbootd') label = 'FastbootD';
+
   if (!confirm(`คุณต้องการสั่งให้โทรศัพท์มือถือเข้าสู่ "${label}" ใช่หรือไม่?`)) return;
 
   try {
@@ -868,12 +1049,307 @@ async function handleReboot(mode) {
     const data = await res.json();
     if (data.ok) {
       showEmergencyMessage(`✅ ${data.message}`, 'success');
-      setTimeout(checkDevice, 2000);
+      setTimeout(checkDevice, 3000);
     } else {
       showEmergencyMessage(`❌ ${data.message}`, 'error');
     }
   } catch (err) {
     showEmergencyMessage(`❌ ${err.message}`, 'error');
+  }
+}
+
+// ==========================================
+// 12. Module 4: Fastboot & Sideload Handlers
+// ==========================================
+
+// Terminal Logger
+function appendTerminal(text, type = 'info') {
+  if (!el.terminalBody) return;
+  const time = new Date().toLocaleTimeString('th-TH');
+  let prefix = `[${time}]`;
+  if (type === 'error') prefix += ' [!]';
+  else if (type === 'success') prefix += ' [✓]';
+  else prefix += ' [i]';
+
+  el.terminalBody.textContent += `\n${prefix} ${text}`;
+  el.terminalBody.scrollTop = el.terminalBody.scrollHeight;
+}
+
+// Auto-Detect Partition from Filename
+function autoDetectPartition(filename) {
+  if (!filename) return;
+  const cleanName = filename.toLowerCase().replace(/\\/g, '/').split('/').pop();
+  
+  if (cleanName.includes('init_boot') || cleanName.startsWith('init_boot')) {
+    setPartitionValue('init_boot');
+  } else if (cleanName.startsWith('boot') || (cleanName.includes('boot') && !cleanName.includes('vendor'))) {
+    setPartitionValue('boot');
+  } else if (cleanName.includes('recovery') || cleanName.includes('twrp') || cleanName.includes('orangefox')) {
+    setPartitionValue('recovery');
+  } else if (cleanName.includes('vbmeta')) {
+    setPartitionValue('vbmeta');
+    if (el.fbDisableVerity) el.fbDisableVerity.checked = true;
+  } else if (cleanName.includes('vendor_boot')) {
+    setPartitionValue('vendor_boot');
+  } else if (cleanName.includes('dtbo')) {
+    setPartitionValue('dtbo');
+  } else if (cleanName.includes('super')) {
+    setPartitionValue('super');
+  } else if (cleanName.includes('system')) {
+    setPartitionValue('system');
+  } else if (cleanName.includes('userdata')) {
+    setPartitionValue('userdata');
+  }
+}
+
+function setPartitionValue(val) {
+  if (!el.fbPartitionSelect) return;
+  el.fbPartitionSelect.value = val;
+  if (el.fbCustomPartition) {
+    el.fbCustomPartition.classList.toggle('hidden', val !== 'custom');
+  }
+}
+
+// Query Fastboot Hardware Variables
+async function loadFastbootInfo() {
+  if (el.fbProductBadge) el.fbProductBadge.textContent = 'Product: ตรวจสอบ...';
+  if (el.fbUnlockBadge) el.fbUnlockBadge.textContent = 'Bootloader: ตรวจสอบ...';
+  if (el.fbSlotBadge) el.fbSlotBadge.textContent = 'Slot: -';
+
+  try {
+    const res = await fetch('/api/fastboot/info');
+    const data = await res.json();
+    if (data.ok) {
+      if (el.fbProductBadge) el.fbProductBadge.textContent = `Product: ${data.product}`;
+      if (el.fbUnlockBadge) {
+        const isUnlocked = data.unlocked === 'yes';
+        el.fbUnlockBadge.textContent = isUnlocked ? '🔓 Bootloader: UNLOCKED' : '🔒 Bootloader: LOCKED';
+        el.fbUnlockBadge.style.color = isUnlocked ? '#4ade80' : '#f87171';
+      }
+      if (el.fbSlotBadge) {
+        el.fbSlotBadge.textContent = data.currentSlot !== 'none' ? `Active Slot: ${data.currentSlot.toUpperCase()}` : 'A/B: ไม่รองรับ (A-only)';
+      }
+      appendTerminal(`[DEVICE DETECTED] Codename: ${data.product} | Slot: ${data.currentSlot} | Unlocked: ${data.unlocked}`, 'info');
+    } else {
+      if (el.fbProductBadge) el.fbProductBadge.textContent = 'Product: -';
+      if (el.fbUnlockBadge) el.fbUnlockBadge.textContent = 'Bootloader: -';
+      appendTerminal(data.message || 'ไม่พบอุปกรณ์ในโหมด Fastboot', 'info');
+    }
+  } catch (err) {
+    appendTerminal(`ไม่สามารถดึงข้อมูล Fastboot ได้: ${err.message}`, 'error');
+  }
+}
+
+// Execute Flash Partition
+async function handleFlashImage() {
+  const filePath = (el.fbFilePath.value || '').trim();
+  let partition = el.fbPartitionSelect.value;
+  if (partition === 'custom') {
+    partition = (el.fbCustomPartition.value || '').trim();
+  }
+  const disableVerity = el.fbDisableVerity.checked;
+
+  if (!filePath) {
+    alert('กรุณาระบุที่อยู่ไฟล์ Image (.img) บนคอมพิวเตอร์');
+    return;
+  }
+  if (!partition) {
+    alert('กรุณาเลือกหรือพิมพ์ชื่อพาร์ติชันเป้าหมาย');
+    return;
+  }
+
+  const btn = el.btnExecuteFlash;
+  const origHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerText = '⏳ กำลังแฟลชไฟล์...';
+  appendTerminal(`[START FLASH] กำลังแฟลชไฟล์: ${filePath} ไปยังพาร์ติชัน: ${partition}...`);
+
+  try {
+    const res = await fetch('/api/fastboot/flash', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ partition, filePath, disableVerity })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      appendTerminal(`[FLASH SUCCESS] ${data.message}`, 'success');
+      if (data.output) appendTerminal(data.output);
+      btn.innerText = '✅ แฟลชสำเร็จ!';
+      showEmergencyMessage(`✅ แฟลชพาร์ติชัน ${partition} สำเร็จแล้ว`, 'success');
+    } else {
+      appendTerminal(`[FLASH FAILED] ${data.message}`, 'error');
+      if (data.output) appendTerminal(data.output, 'error');
+      btn.innerText = '❌ ผิดพลาด';
+      showEmergencyMessage(`❌ การแฟลชล้มเหลว: ${data.message}`, 'error');
+    }
+  } catch (err) {
+    appendTerminal(`[NETWORK ERROR] ${err.message}`, 'error');
+    btn.innerText = '❌ เกิดข้อผิดพลาด';
+  }
+
+  setTimeout(() => {
+    btn.innerHTML = origHtml;
+    btn.disabled = false;
+  }, 2500);
+}
+
+// Temporary Boot
+async function handleFastbootBoot() {
+  const filePath = (el.fbFilePath.value || '').trim();
+  if (!filePath) {
+    alert('กรุณาระบุที่อยู่ไฟล์ Image (.img) ที่ต้องการทดลองบูต');
+    return;
+  }
+
+  const btn = el.btnExecuteBoot;
+  const origHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerText = '⏳ กำลังส่งคำสั่งบูต...';
+  appendTerminal(`[FASTBOOT BOOT] กำลังส่ง ${filePath} เพื่อทดลองบูตชั่วคราว...`);
+
+  try {
+    const res = await fetch('/api/fastboot/boot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      appendTerminal(`[BOOT SUCCESS] ${data.message}`, 'success');
+      if (data.output) appendTerminal(data.output);
+      btn.innerText = '✅ สั่งบูตแล้ว!';
+    } else {
+      appendTerminal(`[BOOT FAILED] ${data.message}`, 'error');
+      if (data.output) appendTerminal(data.output, 'error');
+      btn.innerText = '❌ ผิดพลาด';
+    }
+  } catch (err) {
+    appendTerminal(`[BOOT ERROR] ${err.message}`, 'error');
+    btn.innerText = '❌ เกิดข้อผิดพลาด';
+  }
+
+  setTimeout(() => {
+    btn.innerHTML = origHtml;
+    btn.disabled = false;
+  }, 2500);
+}
+
+// Sideload ZIP via ADB Recovery
+async function handleSideload() {
+  const filePath = (el.sideloadFilePath.value || '').trim();
+  if (!filePath) {
+    alert('กรุณาระบุที่อยู่ไฟล์ .zip ที่ต้องการ Sideload');
+    return;
+  }
+
+  const btn = el.btnExecuteSideload;
+  const origHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerText = '⏳ กำลังส่งไฟล์ Sideload... (อาจใช้เวลา 1-3 นาที)';
+  appendTerminal(`[SIDELOAD] เริ่มส่งไฟล์ ${filePath} ผ่าน ADB Sideload...`);
+
+  try {
+    const res = await fetch('/api/sideload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      appendTerminal(`[SIDELOAD SUCCESS] ${data.message}`, 'success');
+      if (data.output) appendTerminal(data.output);
+      btn.innerText = '✅ ส่งไฟล์สำเร็จ!';
+      showEmergencyMessage('✅ ส่งไฟล์ Sideload สำเร็จแล้ว', 'success');
+    } else {
+      appendTerminal(`[SIDELOAD FAILED] ${data.message}`, 'error');
+      if (data.output) appendTerminal(data.output, 'error');
+      btn.innerText = '❌ ผิดพลาด';
+      showEmergencyMessage(`❌ Sideload ล้มเหลว: ${data.message}`, 'error');
+    }
+  } catch (err) {
+    appendTerminal(`[SIDELOAD ERROR] ${err.message}`, 'error');
+    btn.innerText = '❌ เกิดข้อผิดพลาด';
+  }
+
+  setTimeout(() => {
+    btn.innerHTML = origHtml;
+    btn.disabled = false;
+  }, 3000);
+}
+
+// Switch A/B Active Slot
+async function handleSwitchSlot(slot) {
+  if (!confirm(`คุณต้องการสลับระบบไปยัง Slot: ${slot.toUpperCase()} เพื่อแก้อาการบูตวนใช่หรือไม่?`)) return;
+
+  appendTerminal(`[A/B SLOT] กำลังสลับระบบไปที่ Slot ${slot.toUpperCase()}...`);
+  try {
+    const res = await fetch('/api/fastboot/slot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slot })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      appendTerminal(`[SLOT SUCCESS] ${data.message}`, 'success');
+      showEmergencyMessage(`✅ สลับไปใช้ Slot ${slot.toUpperCase()} แล้ว`, 'success');
+      loadFastbootInfo();
+    } else {
+      appendTerminal(`[SLOT FAILED] ${data.message}`, 'error');
+      showEmergencyMessage(`❌ สลับสล็อตไม่สำเร็จ: ${data.message}`, 'error');
+    }
+  } catch (err) {
+    appendTerminal(`[SLOT ERROR] ${err.message}`, 'error');
+  }
+}
+
+// Erase Cache Partition
+async function handleEraseCache() {
+  if (!confirm('ยืนยันการล้างพาร์ติชันแคช (Wipe Cache) ใช่หรือไม่?')) return;
+  appendTerminal('[ERASE] กำลังล้างพาร์ติชันแคช (fastboot erase cache)...');
+  try {
+    const res = await fetch('/api/fastboot/erase', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ partition: 'cache' })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      appendTerminal(`[ERASE SUCCESS] ${data.message}`, 'success');
+      showEmergencyMessage('✅ ล้างแคชสำเร็จแล้ว', 'success');
+    } else {
+      appendTerminal(`[ERASE FAILED] ${data.message}`, 'error');
+      showEmergencyMessage(`❌ ล้างแคชไม่สำเร็จ: ${data.message}`, 'error');
+    }
+  } catch (err) {
+    appendTerminal(`[ERASE ERROR] ${err.message}`, 'error');
+  }
+}
+
+// Fastboot Reboot Commands
+async function handleFastbootReboot(target) {
+  let label = 'ระบบปกติ';
+  if (target === 'recovery') label = 'Recovery Mode';
+  else if (target === 'bootloader') label = 'Bootloader';
+  else if (target === 'fastbootd') label = 'FastbootD';
+
+  appendTerminal(`[REBOOT] กำลังส่งคำสั่งรีบูตเข้าสู่ ${label}...`);
+  try {
+    const res = await fetch('/api/fastboot/reboot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      appendTerminal(`[REBOOT SUCCESS] ${data.message}`, 'success');
+      showEmergencyMessage(`✅ กำลังรีบูตโทรศัพท์เข้าสู่ ${label}...`, 'success');
+      setTimeout(checkDevice, 3000);
+    } else {
+      appendTerminal(`[REBOOT FAILED] ${data.message}`, 'error');
+      showEmergencyMessage(`❌ รีบูตไม่สำเร็จ: ${data.message}`, 'error');
+    }
+  } catch (err) {
+    appendTerminal(`[REBOOT ERROR] ${err.message}`, 'error');
   }
 }
 

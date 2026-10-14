@@ -61,9 +61,12 @@
         </div>
 
         <div class="empty-action-wrapper">
-          <!-- Single Primary Action for Empty State -->
+          <!-- Primary Actions for Connection Check -->
           <button id="btn-check-device" class="btn btn-primary btn-large">
-            <span class="btn-icon">🔄</span> ตรวจสอบการเชื่อมต่อ
+            <span class="btn-icon">🔄</span> ตรวจสอบการเชื่อมต่อ (ADB)
+          </button>
+          <button id="btn-check-fastboot" class="btn btn-secondary btn-large" title="สำหรับเครื่องบูตวน ค้างโลโก้ หรือเปิดเครื่องไม่ขึ้น">
+            <span class="btn-icon">⚡</span> ตรวจหาโหมด Fastboot / กู้เครื่อง
           </button>
         </div>
         <p id="empty-feedback" class="inline-feedback-text"></p>
@@ -150,7 +153,13 @@
           </div>
           <div class="device-quick-actions">
             <button id="btn-reboot-safe" class="btn btn-secondary btn-sm" title="รีสตาร์ทเข้าโหมดปลอดภัย">
-              🛡️ รีบูตเข้า Safe Mode
+              🛡️ รีบูต Safe Mode
+            </button>
+            <button id="btn-reboot-fastboot" class="btn btn-secondary btn-sm" title="รีบูตเข้า Fastboot เพื่อแฟลชรอม">
+              ⚡ รีบูตเข้า Fastboot
+            </button>
+            <button id="btn-reboot-recovery" class="btn btn-ghost btn-sm" title="รีบูตเข้า Recovery สำหรับ Sideload">
+              📥 เข้า Recovery
             </button>
             <button id="btn-reboot-normal" class="btn btn-ghost btn-sm" title="รีสตาร์ทเครื่องปกติ">
               🔄 รีสตาร์ทปกติ
@@ -171,6 +180,9 @@
           </button>
           <button class="suite-tab-btn" data-tab="tab-debloat">
             <span class="tab-icon">🧹</span> โมดูล 3: ลบแอปขยะติดเครื่อง (Debloater)
+          </button>
+          <button class="suite-tab-btn" data-tab="tab-flasher">
+            <span class="tab-icon">⚡</span> โมดูล 4: แฟลชเครื่อง & กู้บริค (Flasher)
           </button>
           <button class="suite-tab-btn" data-tab="tab-tips">
             <span class="tab-icon">💡</span> เคล็ดลับช่าง & คู่มือ
@@ -376,8 +388,268 @@
           </div>
         </div>
 
+        <!-- ======================================================= -->
+        <!-- TAB 4: Fastboot & Sideload Flasher (Hardware & Unbrick) -->
+        <!-- ======================================================= -->
+        <div id="tab-flasher" class="tab-pane hidden">
+          <!-- Fastboot Device Status Banner -->
+          <div class="flasher-device-banner">
+            <div class="flasher-status-header">
+              <div class="flasher-badge-group">
+                <span class="emergency-badge" id="fb-mode-badge">⚡ Fastboot / Bootloader</span>
+                <span class="flasher-tag" id="fb-product-badge">Product: กำลังตรวจสอบ...</span>
+                <span class="flasher-tag" id="fb-unlock-badge">Bootloader: ตรวจสอบ...</span>
+                <span class="flasher-tag" id="fb-slot-badge">Slot: -</span>
+              </div>
+              <div class="flasher-header-actions">
+                <button id="btn-fb-refresh" class="btn btn-secondary btn-sm">
+                  <span class="btn-icon">🔄</span> รีเฟรชข้อมูล Fastboot
+                </button>
+              </div>
+            </div>
+
+            <!-- Quick Mode Switcher Bar -->
+            <div class="flasher-reboot-bar">
+              <span class="reboot-bar-label">ควบคุมโหมดโทรศัพท์:</span>
+              <button id="btn-reboot-to-bootloader" class="btn btn-ghost btn-sm" title="รีบูตกลับเข้า Bootloader">⚡ สั่งเข้า Bootloader</button>
+              <button id="btn-reboot-to-recovery" class="btn btn-ghost btn-sm" title="รีบูตเข้า Recovery สำหรับ Sideload">📥 สั่งเข้า Recovery</button>
+              <button id="btn-reboot-to-system" class="btn btn-secondary btn-sm" title="บูตเข้าสู่ระบบปฏิบัติการ Android ปกติ">🚀 บูตเข้าระบบปกติ</button>
+            </div>
+          </div>
+
+          <!-- Main Flasher Grid -->
+          <div class="flasher-grid">
+            <!-- Left Column: Partition Flashing Workspace -->
+            <div class="flasher-card">
+              <div class="flasher-card-header">
+                <div class="flasher-card-title">
+                  <span class="card-icon">⚡</span>
+                  <div>
+                    <h3>แฟลชไฟล์อิมเมจ (Partition Flasher)</h3>
+                    <p class="card-subtitle">แฟลชไฟล์ .img ตรงเข้าชิปหน่วยความจำของโทรศัพท์</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flasher-form">
+                <!-- File Selection Input -->
+                <div class="form-group">
+                  <label for="fb-file-path" class="form-label">
+                    <span>1. ที่อยู่ไฟล์ Image (.img / .bin) บนเครื่องคอมพิวเตอร์:</span>
+                  </label>
+                  <div class="file-input-wrapper">
+                    <input type="text" id="fb-file-path" class="form-control" placeholder="พิมพ์หรือวาง Path เช่น D:\ROM\boot.img" />
+                    <input type="file" id="fb-file-browser" style="display: none;" accept=".img,.bin" />
+                    <button id="btn-browse-img" class="btn btn-secondary btn-sm" type="button">📁 เลือกไฟล์</button>
+                  </div>
+                  <span class="field-hint">💡 เคล็ดลับ: สามารถลากไฟล์ .img มาวาง หรือคลิกเลือกไฟล์เพื่อดึงชื่อและเลือกพาร์ติชันให้อัตโนมัติ</span>
+                </div>
+
+                <!-- Partition Selection -->
+                <div class="form-group">
+                  <label for="fb-partition-select" class="form-label">
+                    <span>2. เลือกพาร์ติชันเป้าหมาย (Target Partition):</span>
+                  </label>
+                  <div class="partition-select-group">
+                    <select id="fb-partition-select" class="custom-select form-control">
+                      <option value="boot">boot (เคอร์เนล/แพตช์ Magisk รูท)</option>
+                      <option value="init_boot">init_boot (เคอร์เนล Android 13+ Pixel/Xiaomi/OnePlus)</option>
+                      <option value="recovery">recovery (TWRP / OrangeFox / Custom Recovery)</option>
+                      <option value="vbmeta">vbmeta (ระบบตรวจสอบความปลอดภัย AVB)</option>
+                      <option value="vendor_boot">vendor_boot (โมดูลเคอร์เนลเสริม)</option>
+                      <option value="dtbo">dtbo (Device Tree Blob)</option>
+                      <option value="super">super (Dynamic Partitions รวม system/vendor/product)</option>
+                      <option value="system">system (ระบบปฏิบัติการหลัก)</option>
+                      <option value="userdata">userdata (พื้นที่ข้อมูลผู้ใช้)</option>
+                      <option value="custom">-- กำหนดชื่อพาร์ติชันเอง (Custom) --</option>
+                    </select>
+                    <input type="text" id="fb-custom-partition" class="form-control hidden" placeholder="พิมพ์ชื่อพาร์ติชันเอง เช่น modem, persist..." />
+                  </div>
+                </div>
+
+                <!-- Options -->
+                <div class="form-group options-group">
+                  <label class="custom-checkbox">
+                    <input type="checkbox" id="fb-disable-verity" />
+                    <span>ปิดการตรวจสอบ AVB Verity (<code>--disable-verity --disable-verification</code> สำหรับ vbmeta เพื่อแก้เครื่องบูตวนจากการโมรอม)</span>
+                  </label>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flasher-actions">
+                  <button id="btn-execute-flash" class="btn btn-primary btn-large">
+                    <span class="btn-icon">⚡</span> แฟลชพาร์ติชัน (Flash Image)
+                  </button>
+                  <button id="btn-execute-boot" class="btn btn-secondary btn-large" title="บูตเคอร์เนลหรือ Recovery ชั่วคราวโดยไม่เขียนทับ ROM จริง">
+                    <span class="btn-icon">🚀</span> ทดลองบูตชั่วคราว (Fastboot Boot)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Recovery Sideload & Unbrick Utilities -->
+            <div class="flasher-side-column">
+              <!-- Sideload Card -->
+              <div class="flasher-card">
+                <div class="flasher-card-header">
+                  <div class="flasher-card-title">
+                    <span class="card-icon">📥</span>
+                    <div>
+                      <h3>ADB Sideload (แฟลชไฟล์ .ZIP ใน Recovery)</h3>
+                      <p class="card-subtitle">สำหรับติดตั้ง OTA Update, Custom ROM หรือ Magisk.zip</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flasher-form">
+                  <div class="form-group">
+                    <div class="file-input-wrapper">
+                      <input type="text" id="sideload-file-path" class="form-control" placeholder="Path ไฟล์ .zip เช่น D:\ROM\update.zip" />
+                      <input type="file" id="sideload-file-browser" style="display: none;" accept=".zip" />
+                      <button id="btn-browse-zip" class="btn btn-secondary btn-sm" type="button">📁 เลือก</button>
+                    </div>
+                  </div>
+                  <div class="sideload-tip">
+                    ℹ️ บนหน้าจอมือถือ ต้องเข้าโหมด Recovery แล้วเลือกเมนู <strong>"Apply update from ADB"</strong> หรือ <strong>"Advanced > ADB Sideload"</strong> ก่อนกดส่งไฟล์
+                  </div>
+                  <button id="btn-execute-sideload" class="btn btn-secondary btn-large" style="width: 100%;">
+                    <span class="btn-icon">📥</span> เริ่มส่งไฟล์ผ่าน Sideload
+                  </button>
+                </div>
+              </div>
+
+              <!-- Unbrick Tools Card -->
+              <div class="flasher-card unbrick-card">
+                <div class="flasher-card-header">
+                  <div class="flasher-card-title">
+                    <span class="card-icon">🛟</span>
+                    <div>
+                      <h3>กู้ชีพเครื่องค้าง & บูตวน (Unbrick Utilities)</h3>
+                      <p class="card-subtitle">แก้อาการเครื่องบูตไม่ขึ้นหลังจากอัปเดตระบบผิดพลาด</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="unbrick-content">
+                  <div class="unbrick-item">
+                    <div class="unbrick-info">
+                      <strong>สลับ A/B Active Slot (สูตรแก้ Bootloop อันดับ 1)</strong>
+                      <p>ถ้าเครื่องบูตวนหลังอัปเดต สลับกลับไปใช้อีก Slot หนึ่งจะทำให้เครื่องเปิดติดทันทีโดยข้อมูลไม่หาย!</p>
+                    </div>
+                    <div class="slot-buttons">
+                      <button id="btn-slot-a" class="btn btn-secondary btn-sm">สลับเป็น Slot A</button>
+                      <button id="btn-slot-b" class="btn btn-secondary btn-sm">สลับเป็น Slot B</button>
+                    </div>
+                  </div>
+
+                  <div class="unbrick-item danger-wipe-item">
+                    <div class="unbrick-info">
+                      <strong>ล้างพาร์ติชันแคช (Wipe Cache)</strong>
+                      <p>ล้างไฟล์ขยะระบบเพื่อแก้ปัญหาค้างโลโก้โดยไม่ลบรูปภาพหรือข้อมูลส่วนตัว</p>
+                    </div>
+                    <button id="btn-erase-cache" class="btn btn-secondary btn-sm">ล้างแคช</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Terminal Output Console -->
+          <div class="terminal-container">
+            <div class="terminal-header">
+              <div class="terminal-dots">
+                <span class="dot red"></span>
+                <span class="dot yellow"></span>
+                <span class="dot green"></span>
+                <span class="terminal-title">🖥️ Fastboot & Sideload Live Execution Console</span>
+              </div>
+              <div class="terminal-actions">
+                <button id="btn-clear-terminal" class="terminal-btn">🧹 ล้างหน้าต่าง</button>
+                <button id="btn-copy-terminal" class="terminal-btn">📋 คัดลอก Log</button>
+              </div>
+            </div>
+            <pre id="terminal-body" class="terminal-body">[SYSTEM] พร้อมสำหรับการทำงานของ Fastboot & Sideload Flasher</pre>
+          </div>
+
+          <!-- Brand Flashing & Unbrick Field Guide -->
+          <div class="tech-hacks-container" style="margin-top: 2rem;">
+            <h3 class="tech-hacks-title">📚 คู่มือวิเคราะห์การแฟลชรายยี่ห้อ (Brand Compatibility & Limitation Matrix)</h3>
+            
+            <div class="hack-cards-grid">
+              <!-- Xiaomi -->
+              <div class="hack-card">
+                <div class="hack-header">
+                  <span class="hack-icon">🟠</span>
+                  <strong>Xiaomi / Redmi / POCO</strong>
+                </div>
+                <p class="hack-desc">
+                  <strong>รองรับ 95%:</strong> แฟลชผ่าน Fastboot ROM (ไฟล์ .tgz แตกไฟล์จะได้โฟลเดอร์ <code>images/</code>).<br>
+                  ⚠️ <em>เงื่อนไข:</em> ต้องปลดล็อก Bootloader ผ่าน Mi Unlock Tool หรือ Mi Community ก่อน. หากเครื่องดับสนิท (EDL 9008) ชิปรุ่นใหม่ล็อก Authorized Account ต้องเข้าศูนย์.
+                </p>
+              </div>
+
+              <!-- Google Pixel -->
+              <div class="hack-card highlight-card">
+                <div class="hack-header">
+                  <span class="hack-icon">🔷</span>
+                  <strong>Google Pixel (1 - 9 Pro)</strong>
+                </div>
+                <p class="hack-desc">
+                  <strong>รองรับ 100%:</strong> มาตรฐาน AOSP แท้ สามารถแฟลชได้ทุกพาร์ติชัน (<code>init_boot</code>, <code>boot</code>, <code>vendor_boot</code>, <code>vbmeta</code>, <code>super</code>). ปลดล็อก Bootloader ง่ายผ่าน <code>fastboot flashing unlock</code>.
+                </p>
+              </div>
+
+              <!-- OnePlus / Nothing / Moto / Sony -->
+              <div class="hack-card">
+                <div class="hack-header">
+                  <span class="hack-icon">⚡</span>
+                  <strong>OnePlus / Nothing / Motorola / Sony</strong>
+                </div>
+                <p class="hack-desc">
+                  <strong>รองรับ 100%:</strong> ใช้สถาปัตยกรรม A/B Partitions และ FastbootD เต็มรูปแบบ. หากเครื่องบูตวนหลังอัปเดต ROM แค่กด <em>"สลับ Slot A/B"</em> จะกลับมาใช้งานได้ทันที.
+                </p>
+              </div>
+
+              <!-- Samsung -->
+              <div class="hack-card">
+                <div class="hack-header">
+                  <span class="hack-icon">🔵</span>
+                  <strong>Samsung Galaxy</strong>
+                </div>
+                <p class="hack-desc">
+                  <strong>รองรับเฉพาะส่วน (Partial):</strong> ซัมซุงใช้ Download Mode (Odin) สำหรับ Full Firmware (.tar.md5).<br>
+                  ✅ <em>ส่วนที่ใช้กับระบบเราได้:</em> อัปเดตรอมผ่าน <strong>ADB Sideload</strong> ใน Stock Recovery, แฟลช GSI ใน FastbootD (Android 11+), และสั่งรีบูตเครื่องเข้า Download Mode.
+                </p>
+              </div>
+
+              <!-- OPPO / Vivo -->
+              <div class="hack-card">
+                <div class="hack-header">
+                  <span class="hack-icon">🟢</span>
+                  <strong>OPPO / Realme / Vivo / iQOO</strong>
+                </div>
+                <p class="hack-desc">
+                  <strong>รองรับปานกลาง:</strong> การปลด Bootloader ต้องขอสิทธิ์ผ่านแอป Deep Testing. สามารถแฟลชไฟล์ผ่าน Recovery Sideload ได้ หรือใช้ Fastboot เมื่อเครื่องปลดล็อกแล้ว.
+                </p>
+              </div>
+
+              <!-- HarmonyOS & iOS -->
+              <div class="hack-card">
+                <div class="hack-header">
+                  <span class="hack-icon">🍎</span>
+                  <strong>HarmonyOS & Apple iOS</strong>
+                </div>
+                <p class="hack-desc">
+                  <strong>HarmonyOS (Huawei):</strong> รอม EMUI เก่ารองรับ Fastboot แต่ HarmonyOS NEXT ตัด AOSP ทิ้งใช้ HDC แทน.<br>
+                  <strong>Apple iOS:</strong> <em>ไม่รองรับ</em> (คนละสถาปัตยกรรม iOS ไม่ใช้ ADB/Fastboot แต่ใช้ DFU Mode/IPSW ผ่านไดรเวอร์ usbmuxd ของ Apple).
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- ============================================== -->
-        <!-- TAB 4: Technician Tips & Safe Mode Guide       -->
+        <!-- TAB 5: Technician Tips & Safe Mode Guide       -->
         <!-- ============================================== -->
         <div id="tab-tips" class="tab-pane hidden">
           <div class="tech-hacks-container" style="margin-top: 0;">

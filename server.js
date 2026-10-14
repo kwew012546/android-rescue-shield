@@ -53,6 +53,67 @@ function runAdb(args, timeoutMs = 12000) {
   });
 }
 
+function findFastboot() {
+  if (process.env.FASTBOOT_PATH && fs.existsSync(process.env.FASTBOOT_PATH)) {
+    return process.env.FASTBOOT_PATH;
+  }
+  const localAppData = process.env.LOCALAPPDATA || '';
+  const candidates = [
+    path.join(localAppData, 'Android', 'Sdk', 'platform-tools', 'fastboot.exe'),
+    path.join(process.env.PROGRAMFILES || '', 'Android', 'platform-tools', 'fastboot.exe'),
+    path.join(process.env['PROGRAMFILES(X86)'] || '', 'Android', 'platform-tools', 'fastboot.exe'),
+    'fastboot'
+  ];
+  for (const c of candidates) {
+    if (c === 'fastboot' || fs.existsSync(c)) {
+      return c;
+    }
+  }
+  return 'fastboot';
+}
+
+const FASTBOOT_BIN = findFastboot();
+console.log(`[Fastboot] Using binary: ${FASTBOOT_BIN}`);
+
+// Execute Fastboot command with promise & timeout
+// Note: Fastboot on Windows outputs both progress & status to stderr
+function runFastboot(args, timeoutMs = 60000) {
+  return new Promise((resolve) => {
+    execFile(FASTBOOT_BIN, args, { timeout: timeoutMs, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
+      const outText = (stdout || '').trim();
+      const errText = (stderr || '').trim();
+      const combined = [outText, errText].filter(Boolean).join('\n');
+      const isFailed = err || combined.includes('FAILED') || combined.includes('error:');
+
+      if (isFailed && err) {
+        resolve({
+          ok: false,
+          error: err.message,
+          code: err.code,
+          stdout: outText,
+          stderr: errText,
+          output: combined || err.message
+        });
+      } else if (isFailed) {
+        resolve({
+          ok: false,
+          error: 'Fastboot returned error status',
+          stdout: outText,
+          stderr: errText,
+          output: combined
+        });
+      } else {
+        resolve({
+          ok: true,
+          stdout: outText,
+          stderr: errText,
+          output: combined
+        });
+      }
+    });
+  });
+}
+
 // Known common system launchers to avoid killing accidentally
 const SYSTEM_LAUNCHERS = new Set([
   'com.google.android.apps.nexuslauncher',
@@ -171,6 +232,25 @@ async function handleApi(req, res, pathname) {
       .filter(l => l.length > 0 && !l.startsWith('List of devices attached') && !l.startsWith('*'));
 
     if (lines.length === 0) {
+      // Check if any device is connected in Fastboot mode
+      const fbDevRes = await runFastboot(['devices'], 2000);
+      if (fbDevRes.ok && fbDevRes.stdout.trim().length > 0) {
+        const fbLines = fbDevRes.stdout.trim().split('\n');
+        const fbFirst = fbLines[0].trim();
+        const fbParts = fbFirst.split(/\s+/);
+        const fbSerial = fbParts[0] || 'Unknown';
+        return sendJson(res, 200, {
+          connected: true,
+          state: 'fastboot',
+          serial: fbSerial,
+          model: 'Fastboot Device',
+          brand: 'Bootloader',
+          androidVersion: 'Fastboot Mode',
+          batteryLevel: null,
+          message: 'พบอุปกรณ์เชื่อมต่อในโหมด Fastboot / Bootloader'
+        });
+      }
+
       return sendJson(res, 200, {
         connected: false,
         state: 'disconnected',
@@ -189,6 +269,19 @@ async function handleApi(req, res, pathname) {
         state: 'unauthorized',
         serial,
         message: 'อุปกรณ์เชื่อมต่อแล้ว แต่ยังรอการกด "อนุญาตการดีบัก USB" (Allow USB Debugging) บนหน้าจอมือถือ'
+      });
+    }
+
+    if (status === 'recovery' || status === 'sideload') {
+      return sendJson(res, 200, {
+        connected: true,
+        state: status,
+        serial,
+        model: `${status.toUpperCase()} Device`,
+        brand: 'Recovery Mode',
+        androidVersion: status === 'sideload' ? 'ADB Sideload' : 'Recovery',
+        batteryLevel: null,
+        message: `อุปกรณ์เชื่อมต่อในโหมด ${status.toUpperCase()} (พร้อมสำหรับการแฟลช Sideload)`
       });
     }
 
@@ -526,18 +619,37 @@ async function handleApi(req, res, pathname) {
     return sendJson(res, 200, { ok: true, message: `สั่งหยุดการทำงานของ ${pkg} เรียบร้อยแล้ว` });
   }
 
-  // POST /api/reboot - Reboot device (normal or safe-mode)
+  // POST /api/reboot - Reboot device (normal, safe-mode, bootloader, recovery, fastbootd)
   if (pathname === '/api/reboot' && req.method === 'POST') {
     const body = await parseJsonBody(req);
-    const mode = body.mode; // 'safe-mode' or 'normal'
-    const args = mode === 'safe-mode' ? ['reboot', 'safe-mode'] : ['reboot'];
+    const mode = body.mode || 'normal';
+    let args = ['reboot'];
+    let msg = 'กำลังรีสตาร์ทมือถือ...';
+
+    if (mode === 'safe-mode') {
+      args = ['reboot', 'safe-mode'];
+      msg = 'กำลังรีสตาร์ทมือถือเข้าสู่ Safe Mode...';
+    } else if (mode === 'bootloader') {
+      args = ['reboot', 'bootloader'];
+      msg = 'กำลังรีสตาร์ทมือถือเข้าสู่ Fastboot / Bootloader...';
+    } else if (mode === 'recovery') {
+      args = ['reboot', 'recovery'];
+      msg = 'กำลังรีสตาร์ทมือถือเข้าสู่ Recovery Mode...';
+    } else if (mode === 'fastbootd') {
+      args = ['reboot', 'fastboot'];
+      msg = 'กำลังรีสตาร์ทมือถือเข้าสู่ FastbootD...';
+    } else if (mode === 'sideload') {
+      args = ['reboot', 'sideload'];
+      msg = 'กำลังรีสตาร์ทมือถือเข้าสู่โหมด Sideload...';
+    }
+
     const rebRes = await runAdb(args);
     if (!rebRes.ok) {
       return sendJson(res, 500, { ok: false, message: 'คำสั่งรีบูตไม่สำเร็จ: ' + rebRes.stderr });
     }
     return sendJson(res, 200, {
       ok: true,
-      message: mode === 'safe-mode' ? 'กำลังรีสตาร์ทมือถือเข้าสู่ Safe Mode...' : 'กำลังรีสตาร์ทมือถือ...'
+      message: msg
     });
   }
 
@@ -698,6 +810,259 @@ async function handleApi(req, res, pathname) {
     return sendJson(res, 500, {
       ok: false,
       message: 'กู้คืนแอปไม่สำเร็จ: ' + (resRest.stderr || resRest.stdout)
+    });
+  }
+
+  // ==========================================
+  // MODULE 4: Hardware/Firmware Flashing APIs
+  // ==========================================
+
+  // GET /api/fastboot/devices - List devices currently in Fastboot mode
+  if (pathname === '/api/fastboot/devices' && req.method === 'GET') {
+    const fbRes = await runFastboot(['devices'], 3000);
+    const devices = [];
+    if (fbRes.ok && fbRes.stdout.trim().length > 0) {
+      const lines = fbRes.stdout.trim().split('\n');
+      for (const line of lines) {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 2) {
+          devices.push({ serial: parts[0], mode: parts[1] });
+        }
+      }
+    }
+    return sendJson(res, 200, {
+      ok: true,
+      connected: devices.length > 0,
+      devices
+    });
+  }
+
+  // GET /api/fastboot/info - Get hardware variables from Fastboot
+  if (pathname === '/api/fastboot/info' && req.method === 'GET') {
+    const devCheck = await runFastboot(['devices'], 3000);
+    if (!devCheck.ok || !devCheck.stdout.trim()) {
+      return sendJson(res, 200, {
+        ok: false,
+        message: 'ไม่พบอุปกรณ์ในโหมด Fastboot กรุณาต่อสาย USB และเปิดมือถือเข้าหน้า Fastboot / Bootloader'
+      });
+    }
+
+    // Query essential fastboot variables
+    const [allRes, prodRes, unlockRes, slotRes, secRes, userRes] = await Promise.all([
+      runFastboot(['getvar', 'all'], 5000),
+      runFastboot(['getvar', 'product'], 4000),
+      runFastboot(['getvar', 'unlocked'], 4000),
+      runFastboot(['getvar', 'current-slot'], 4000),
+      runFastboot(['getvar', 'secure'], 4000),
+      runFastboot(['getvar', 'is-userspace'], 4000)
+    ]);
+
+    const combinedOutput = [
+      allRes.output,
+      prodRes.output,
+      unlockRes.output,
+      slotRes.output,
+      secRes.output,
+      userRes.output
+    ].filter(Boolean).join('\n');
+
+    const extractVar = (key) => {
+      const reg = new RegExp(`(?:bootloader\\)\\s*)?${key}:\\s*([^\\r\\n]+)`, 'i');
+      const m = combinedOutput.match(reg);
+      return m ? m[1].trim() : null;
+    };
+
+    const product = extractVar('product');
+    const unlocked = extractVar('unlocked');
+    const currentSlot = extractVar('current-slot');
+    const secure = extractVar('secure');
+    const isUserspace = extractVar('is-userspace');
+
+    return sendJson(res, 200, {
+      ok: true,
+      product: product || 'Unknown',
+      unlocked: unlocked ? (unlocked.toLowerCase() === 'yes' ? 'yes' : 'no') : 'unknown',
+      currentSlot: currentSlot ? currentSlot.toLowerCase() : 'none',
+      isUserspace: isUserspace ? isUserspace.toLowerCase() === 'yes' : false,
+      secure: secure ? secure.toLowerCase() === 'yes' : null,
+      raw: combinedOutput
+    });
+  }
+
+  // POST /api/fastboot/flash - Flash partition (e.g. boot, recovery, vbmeta, super)
+  if (pathname === '/api/fastboot/flash' && req.method === 'POST') {
+    const body = await parseJsonBody(req);
+    const partition = (body.partition || '').trim();
+    const filePath = (body.filePath || '').trim();
+    const disableVerity = !!body.disableVerity;
+
+    if (!partition || !/^[a-zA-Z0-9_\-\.]+$/.test(partition)) {
+      return sendJson(res, 400, { ok: false, message: 'ชื่อพาร์ติชันไม่ถูกต้อง' });
+    }
+
+    if (!filePath) {
+      return sendJson(res, 400, { ok: false, message: 'กรุณาระบุที่อยู่ไฟล์ (File Path) บนคอมพิวเตอร์' });
+    }
+
+    if (!fs.existsSync(filePath)) {
+      return sendJson(res, 400, { ok: false, message: `ไม่พบไฟล์ที่ระบุ: ${filePath}` });
+    }
+
+    const stat = fs.statSync(filePath);
+    if (!stat.isFile()) {
+      return sendJson(res, 400, { ok: false, message: 'เส้นทางที่ระบุไม่ใช่ไฟล์ที่ถูกต้อง' });
+    }
+
+    // Check device connection
+    const devCheck = await runFastboot(['devices'], 3000);
+    if (!devCheck.ok || !devCheck.stdout.trim()) {
+      return sendJson(res, 400, {
+        ok: false,
+        message: 'ไม่พบอุปกรณ์ในโหมด Fastboot กรุณาต่อสาย USB และเปิดเครื่องเข้า Fastboot ก่อน'
+      });
+    }
+
+    let args = [];
+    if (partition === 'vbmeta' && disableVerity) {
+      args = ['--disable-verity', '--disable-verification', 'flash', 'vbmeta', filePath];
+    } else {
+      args = ['flash', partition, filePath];
+    }
+
+    const flashRes = await runFastboot(args, 180000); // 3 minutes timeout
+    return sendJson(res, 200, {
+      ok: flashRes.ok,
+      message: flashRes.ok
+        ? `แฟลชพาร์ติชัน ${partition} เรียบร้อยแล้ว!`
+        : `การแฟลชล้มเหลว: ${flashRes.output || flashRes.error}`,
+      output: flashRes.output
+    });
+  }
+
+  // POST /api/fastboot/boot - Temporary boot (e.g. fastboot boot twrp.img / boot.img)
+  if (pathname === '/api/fastboot/boot' && req.method === 'POST') {
+    const body = await parseJsonBody(req);
+    const filePath = (body.filePath || '').trim();
+
+    if (!filePath || !fs.existsSync(filePath)) {
+      return sendJson(res, 400, { ok: false, message: 'ไม่พบไฟล์อิมเมจที่ระบุบนคอมพิวเตอร์' });
+    }
+
+    const devCheck = await runFastboot(['devices'], 3000);
+    if (!devCheck.ok || !devCheck.stdout.trim()) {
+      return sendJson(res, 400, { ok: false, message: 'ไม่พบอุปกรณ์ในโหมด Fastboot' });
+    }
+
+    const bootRes = await runFastboot(['boot', filePath], 60000);
+    return sendJson(res, 200, {
+      ok: bootRes.ok,
+      message: bootRes.ok
+        ? 'ส่งไฟล์และสั่งบูตชั่วคราวสำเร็จ! (โทรศัพท์จะบูตเข้าระบบทดลองทันที)'
+        : `บูตไม่สำเร็จ: ${bootRes.output || bootRes.error}`,
+      output: bootRes.output
+    });
+  }
+
+  // POST /api/fastboot/slot - Switch active A/B slot
+  if (pathname === '/api/fastboot/slot' && req.method === 'POST') {
+    const body = await parseJsonBody(req);
+    const slot = (body.slot || '').toLowerCase().trim();
+
+    if (slot !== 'a' && slot !== 'b' && slot !== 'other') {
+      return sendJson(res, 400, { ok: false, message: 'สล็อตต้องเป็น a, b หรือ other' });
+    }
+
+    const devCheck = await runFastboot(['devices'], 3000);
+    if (!devCheck.ok || !devCheck.stdout.trim()) {
+      return sendJson(res, 400, { ok: false, message: 'ไม่พบอุปกรณ์ในโหมด Fastboot' });
+    }
+
+    const slotRes = await runFastboot(['set_active', slot], 10000);
+    return sendJson(res, 200, {
+      ok: slotRes.ok,
+      message: slotRes.ok
+        ? `สลับสล็อตสำเร็จ! ปัจจุบันระบบเปลี่ยนไปใช้ Slot: ${slot.toUpperCase()}`
+        : `สลับสล็อตไม่สำเร็จ: ${slotRes.output || slotRes.error}`,
+      output: slotRes.output
+    });
+  }
+
+  // POST /api/fastboot/erase - Wipe partition (e.g. cache, userdata)
+  if (pathname === '/api/fastboot/erase' && req.method === 'POST') {
+    const body = await parseJsonBody(req);
+    const partition = (body.partition || '').trim();
+
+    if (!partition || !/^[a-zA-Z0-9_\-]+$/.test(partition)) {
+      return sendJson(res, 400, { ok: false, message: 'ชื่อพาร์ติชันไม่ถูกต้อง' });
+    }
+
+    const devCheck = await runFastboot(['devices'], 3000);
+    if (!devCheck.ok || !devCheck.stdout.trim()) {
+      return sendJson(res, 400, { ok: false, message: 'ไม่พบอุปกรณ์ในโหมด Fastboot' });
+    }
+
+    const eraseRes = await runFastboot(['erase', partition], 30000);
+    return sendJson(res, 200, {
+      ok: eraseRes.ok,
+      message: eraseRes.ok
+        ? `ล้างข้อมูลพาร์ติชัน ${partition} สำเร็จแล้ว`
+        : `ล้างข้อมูลไม่สำเร็จ: ${eraseRes.output || eraseRes.error}`,
+      output: eraseRes.output
+    });
+  }
+
+  // POST /api/fastboot/reboot - Reboot from fastboot mode
+  if (pathname === '/api/fastboot/reboot' && req.method === 'POST') {
+    const body = await parseJsonBody(req);
+    const target = body.target || 'system'; // system, recovery, bootloader, fastbootd
+
+    let args = ['reboot'];
+    let msg = 'กำลังรีบูตเข้าสู่ระบบปกติ...';
+    if (target === 'recovery') {
+      args = ['reboot', 'recovery'];
+      msg = 'กำลังรีบูตเข้าสู่ Recovery Mode...';
+    } else if (target === 'bootloader') {
+      args = ['reboot', 'bootloader'];
+      msg = 'กำลังรีบูตกลับเข้า Bootloader...';
+    } else if (target === 'fastbootd') {
+      args = ['reboot', 'fastboot'];
+      msg = 'กำลังรีบูตเข้าสู่ FastbootD...';
+    }
+
+    const devCheck = await runFastboot(['devices'], 3000);
+    if (!devCheck.ok || !devCheck.stdout.trim()) {
+      return sendJson(res, 400, { ok: false, message: 'ไม่พบอุปกรณ์ในโหมด Fastboot' });
+    }
+
+    const rebRes = await runFastboot(args, 15000);
+    return sendJson(res, 200, {
+      ok: rebRes.ok,
+      message: rebRes.ok ? msg : `รีบูตไม่สำเร็จ: ${rebRes.output || rebRes.error}`,
+      output: rebRes.output
+    });
+  }
+
+  // POST /api/sideload - Flash ROM/Update via ADB Sideload
+  if (pathname === '/api/sideload' && req.method === 'POST') {
+    const body = await parseJsonBody(req);
+    const filePath = (body.filePath || '').trim();
+
+    if (!filePath || !fs.existsSync(filePath)) {
+      return sendJson(res, 400, { ok: false, message: 'ไม่พบไฟล์ .zip ที่ระบุบนคอมพิวเตอร์' });
+    }
+
+    if (!filePath.toLowerCase().endsWith('.zip')) {
+      return sendJson(res, 400, { ok: false, message: 'ไฟล์ Sideload ต้องเป็นนามสกุล .zip เท่านั้น' });
+    }
+
+    const sideRes = await runAdb(['sideload', filePath], 300000); // 5 minutes timeout
+    const combined = [sideRes.stdout, sideRes.stderr].filter(Boolean).join('\n');
+    return sendJson(res, 200, {
+      ok: sideRes.ok,
+      message: sideRes.ok
+        ? 'ส่งไฟล์ผ่าน ADB Sideload สำเร็จแล้ว! เครื่องมือกำลังติดตั้งบนโทรศัพท์'
+        : `Sideload ล้มเหลว: ${combined || sideRes.error}`,
+      output: combined
     });
   }
 
