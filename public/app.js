@@ -99,6 +99,15 @@ const el = {
   btnClearTerminal: document.getElementById('btn-clear-terminal'),
   btnCopyTerminal: document.getElementById('btn-copy-terminal'),
 
+  // Samsung Hub
+  samsungHubCard: document.getElementById('samsung-hub-card'),
+  samModelBadge: document.getElementById('sam-model-badge'),
+  samBitBadge: document.getElementById('sam-bit-badge'),
+  samCscBadge: document.getElementById('sam-csc-badge'),
+  btnLaunchOdin: document.getElementById('btn-launch-odin'),
+  btnSamEnterDownload: document.getElementById('btn-sam-enter-download'),
+  btnSamDownloadRom: document.getElementById('btn-sam-download-rom'),
+
   // Modal
   modalUninstall: document.getElementById('modal-uninstall'),
   modalPkgName: document.getElementById('modal-pkg-name'),
@@ -276,6 +285,14 @@ function bindEvents() {
     });
   }
 
+  // Samsung Hub Events
+  if (el.btnLaunchOdin) {
+    el.btnLaunchOdin.addEventListener('click', handleLaunchOdin);
+  }
+  if (el.btnSamEnterDownload) {
+    el.btnSamEnterDownload.addEventListener('click', () => handleReboot('download'));
+  }
+
   el.btnCancelUninstall.addEventListener('click', closeModal);
   el.btnConfirmUninstall.addEventListener('click', executeUninstall);
 }
@@ -407,6 +424,17 @@ function updateDeviceHeader(dev) {
   el.devAndroid.textContent = `Android ${dev.androidVersion || '-'}`;
   el.devSerial.textContent = `ID: ${dev.serial || '-'}`;
   el.devBattery.textContent = dev.batteryLevel !== null ? `แบตเตอรี่: ${dev.batteryLevel}%` : 'แบตเตอรี่: -';
+
+  // Update Samsung Hub if info is available
+  if (dev.samsungInfo) {
+    if (el.samModelBadge) el.samModelBadge.textContent = `Model: ${dev.samsungInfo.model}`;
+    if (el.samBitBadge) el.samBitBadge.textContent = `Binary: Bit ${dev.samsungInfo.binaryBit || '-'}`;
+    if (el.samCscBadge) el.samCscBadge.textContent = `CSC: ${dev.samsungInfo.csc || 'THL'}`;
+    if (el.btnSamDownloadRom && dev.samsungInfo.firmwareUrl) {
+      el.btnSamDownloadRom.href = dev.samsungInfo.firmwareUrl;
+      el.btnSamDownloadRom.title = `คลิกเพื่อดาวน์โหลดรอมศูนย์ตรงรุ่น ${dev.samsungInfo.model} (${dev.samsungInfo.csc})`;
+    }
+  }
 }
 
 // 2. Real-time Top App Monitor
@@ -1363,6 +1391,36 @@ async function handleFastbootReboot(target) {
   } catch (err) {
     appendTerminal(`[REBOOT ERROR] ${err.message}`, 'error');
   }
+}
+
+// Launch Odin3 Executable
+async function handleLaunchOdin() {
+  const btn = el.btnLaunchOdin;
+  const origHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerText = '⏳ กำลังเปิด Odin3...';
+
+  try {
+    const res = await fetch('/api/samsung/launch-odin', { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      btn.innerText = '✅ เปิด Odin3 แล้ว!';
+      showEmergencyMessage('✅ เปิดโปรแกรม Odin3 บนหน้าจอเรียบร้อยแล้ว', 'success');
+      appendTerminal(`[ODIN3] สั่งเปิดโปรแกรมสำเร็จ: ${data.odinPath || 'Odin3.exe'}`);
+    } else {
+      btn.innerText = '❌ ไม่พบไฟล์';
+      showEmergencyMessage(`❌ ${data.message}`, 'error');
+      appendTerminal(`[ODIN3 ERROR] ${data.message}`, 'error');
+    }
+  } catch (err) {
+    btn.innerText = '❌ ข้อผิดพลาด';
+    appendTerminal(`[ODIN3 ERROR] ${err.message}`, 'error');
+  }
+
+  setTimeout(() => {
+    btn.innerHTML = origHtml;
+    btn.disabled = false;
+  }, 2500);
 }
 
 // Helper: Escape HTML

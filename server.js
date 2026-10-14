@@ -75,6 +75,22 @@ function findFastboot() {
 const FASTBOOT_BIN = findFastboot();
 console.log(`[Fastboot] Using binary: ${FASTBOOT_BIN}`);
 
+function findOdin() {
+  const userProfile = process.env.USERPROFILE || '';
+  const candidates = [
+    path.join(userProfile, 'Downloads', 'Odin3_v3.14.4', 'Odin3_v3.14.4.exe'),
+    path.join(userProfile, 'Downloads', 'Odin3_v3.14.4', 'Odin3.exe'),
+    path.join(userProfile, 'Downloads', 'Odin3.exe'),
+    path.join(userProfile, 'Desktop', 'Odin3_v3.14.4', 'Odin3_v3.14.4.exe'),
+    path.join(userProfile, 'Desktop', 'Odin3.exe'),
+    path.join(__dirname, 'tools', 'odin', 'Odin3_v3.14.4.exe')
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return null;
+}
+
 // Execute Fastboot command with promise & timeout
 // Note: Fastboot on Windows outputs both progress & status to stderr
 function runFastboot(args, timeoutMs = 60000) {
@@ -295,11 +311,13 @@ async function handleApi(req, res, pathname) {
     }
 
     // Device is authorized and connected! Query details
-    const [modelRes, brandRes, releaseRes, batteryRes] = await Promise.all([
+    const [modelRes, brandRes, releaseRes, batteryRes, bootloaderRes, cscRes] = await Promise.all([
       runAdb(['shell', 'getprop', 'ro.product.model']),
       runAdb(['shell', 'getprop', 'ro.product.brand']),
       runAdb(['shell', 'getprop', 'ro.build.version.release']),
-      runAdb(['shell', 'dumpsys', 'battery'])
+      runAdb(['shell', 'dumpsys', 'battery']),
+      runAdb(['shell', 'getprop', 'ro.boot.bootloader']),
+      runAdb(['shell', 'getprop', 'ro.csc.sales_code'])
     ]);
 
     let batteryLevel = null;
@@ -308,14 +326,42 @@ async function handleApi(req, res, pathname) {
       if (levelMatch) batteryLevel = parseInt(levelMatch[1], 10);
     }
 
+    const brand = (brandRes.stdout || '').trim();
+    const model = (modelRes.stdout || '').trim() || serial;
+    const bootloader = (bootloaderRes.stdout || '').trim();
+    const csc = (cscRes.stdout || '').trim();
+    const isSamsung = brand.toLowerCase().includes('samsung');
+
+    let binaryBit = null;
+    if (bootloader && bootloader.length >= 5) {
+      const char = bootloader.charAt(bootloader.length - 5);
+      if (/[0-9A-Z]/i.test(char)) {
+        binaryBit = char.toUpperCase();
+      }
+    }
+
+    const odinPath = findOdin();
+
+    const samsungInfo = {
+      isSamsung,
+      model,
+      bootloader,
+      binaryBit,
+      csc: csc || 'THL',
+      firmwareUrl: `https://samfw.com/firmware/${encodeURIComponent(model)}/${encodeURIComponent(csc || 'THL')}`,
+      odinFound: !!odinPath,
+      odinPath: odinPath || null
+    };
+
     return sendJson(res, 200, {
       connected: true,
       state: 'device',
       serial,
-      model: (modelRes.stdout || '').trim() || serial,
-      brand: (brandRes.stdout || '').trim(),
+      model,
+      brand,
       androidVersion: (releaseRes.stdout || '').trim() || 'Unknown',
-      batteryLevel
+      batteryLevel,
+      samsungInfo
     });
   }
 
@@ -1070,6 +1116,32 @@ async function handleApi(req, res, pathname) {
         : `Sideload ล้มเหลว: ${combined || sideRes.error}`,
       output: combined
     });
+  }
+
+  // POST /api/samsung/launch-odin - Launch Odin3 on desktop
+  if (pathname === '/api/samsung/launch-odin' && req.method === 'POST') {
+    const odinPath = findOdin();
+    if (!odinPath) {
+      return sendJson(res, 404, {
+        ok: false,
+        message: 'ไม่พบไฟล์ Odin3.exe บนคอมพิวเตอร์ กรุณาตรวจสอบว่ามีโฟลเดอร์ Odin3_v3.14.4 ใน Downloads หรือ Desktop'
+      });
+    }
+
+    try {
+      const child = execFile(odinPath, [], { detached: true, stdio: 'ignore' });
+      child.unref();
+      return sendJson(res, 200, {
+        ok: true,
+        odinPath,
+        message: 'เปิดโปรแกรม Odin3 บนหน้าจอคอมพิวเตอร์เรียบร้อยแล้ว'
+      });
+    } catch (err) {
+      return sendJson(res, 500, {
+        ok: false,
+        message: 'ไม่สามารถเปิดโปรแกรม Odin3 ได้: ' + err.message
+      });
+    }
   }
 
   // 404 for unknown API

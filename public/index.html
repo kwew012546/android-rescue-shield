@@ -420,6 +420,58 @@
             </div>
           </div>
 
+          <!-- Samsung Smart Technician Assistant Hub -->
+          <div id="samsung-hub-card" class="samsung-hub-card">
+            <div class="samsung-hub-header">
+              <div class="samsung-hub-title">
+                <span class="samsung-logo-badge">🔵 SAMSUNG</span>
+                <div>
+                  <h3 style="font-size: 1.15rem; color: #fff;">ศูนย์อำนวยความสะดวกช่าง Samsung & Odin Assistant</h3>
+                  <p class="card-subtitle">ตรวจสอบข้อมูลฮาร์ดแวร์ เลือกรอมตรงรุ่น และเปิด Odin3 ได้ใน 1 คลิก</p>
+                </div>
+              </div>
+              <div class="samsung-meta-badges">
+                <span class="flasher-tag" id="sam-model-badge">Model: ตรวจสอบ...</span>
+                <span class="flasher-tag" id="sam-bit-badge">Binary: Bit -</span>
+                <span class="flasher-tag" id="sam-csc-badge">CSC: THL</span>
+              </div>
+            </div>
+
+            <div class="samsung-hub-body">
+              <div class="samsung-hub-actions">
+                <button id="btn-launch-odin" class="btn btn-primary btn-large">
+                  <span class="btn-icon">🚀</span> 1-คลิกเปิดโปรแกรม Odin3
+                </button>
+                <button id="btn-sam-enter-download" class="btn btn-secondary btn-large">
+                  <span class="btn-icon">🔵</span> สั่งมือถือเข้า Download Mode
+                </button>
+                <a id="btn-sam-download-rom" href="https://samfw.com" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-large" style="text-decoration: none;">
+                  <span class="btn-icon">📥</span> 1-คลิกลิงก์ดาวน์โหลดรอมศูนย์ตรงรุ่น
+                </a>
+              </div>
+
+              <!-- Odin 4-Slot Visual Helper Guide -->
+              <div class="odin-slots-guide">
+                <div class="odin-slot-box">
+                  <span class="slot-name">BL</span>
+                  <span class="slot-desc">ใส่ไฟล์ <code>BL_xxxx.tar.md5</code> (Bootloader)</span>
+                </div>
+                <div class="odin-slot-box">
+                  <span class="slot-name">AP</span>
+                  <span class="slot-desc">ใส่ไฟล์ <code>AP_xxxx.tar.md5</code> (System Core)</span>
+                </div>
+                <div class="odin-slot-box">
+                  <span class="slot-name">CP</span>
+                  <span class="slot-desc">ใส่ไฟล์ <code>CP_xxxx.tar.md5</code> (Modem/Radio)</span>
+                </div>
+                <div class="odin-slot-box highlight-slot">
+                  <span class="slot-name">CSC</span>
+                  <span class="slot-desc">⭐ กู้เครื่องรูปไม่หาย: ใส่ <code>HOME_CSC_xxxx</code><br>(ถ้าล้างเครื่องใหม่หมดให้ใส่ <code>CSC_xxxx</code>)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Main Flasher Grid -->
           <div class="flasher-grid">
             <!-- Left Column: Partition Flashing Workspace -->

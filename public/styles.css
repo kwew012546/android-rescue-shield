@@ -1023,6 +1023,102 @@ html, body {
 /* MODULE 4: Fastboot & Sideload Flasher CSS  */
 /* ========================================== */
 
+/* Samsung Technician Hub */
+.samsung-hub-card {
+  background: linear-gradient(135deg, rgba(3, 78, 162, 0.12), rgba(15, 23, 42, 0.95));
+  border: 1px solid rgba(3, 78, 162, 0.45);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.samsung-hub-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+}
+
+.samsung-hub-title {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.samsung-logo-badge {
+  background: #034ea2;
+  color: #fff;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  box-shadow: 0 0 10px rgba(3, 78, 162, 0.5);
+}
+
+.samsung-meta-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.samsung-hub-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.odin-slots-guide {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.odin-slot-box {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.odin-slot-box.highlight-slot {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.slot-name {
+  font-family: monospace;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--accent-blue);
+}
+
+.odin-slot-box.highlight-slot .slot-name {
+  color: var(--accent-emerald);
+}
+
+.slot-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.slot-desc code {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
 .flasher-device-banner {
   background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
   border: 1px solid rgba(56, 189, 248, 0.35);
