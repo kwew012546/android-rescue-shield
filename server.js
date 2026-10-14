@@ -78,17 +78,53 @@ console.log(`[Fastboot] Using binary: ${FASTBOOT_BIN}`);
 function findOdin() {
   const userProfile = process.env.USERPROFILE || '';
   const candidates = [
+    // Top Priority: Embedded directly in project repository
+    path.join(__dirname, 'tools', 'samsung', 'odin', 'Odin3_v3.14.4.exe'),
+    path.join(__dirname, 'tools', 'samsung', 'odin', 'Odin3.exe'),
+    path.join(__dirname, 'tools', 'odin', 'Odin3_v3.14.4.exe'),
+    path.join(__dirname, 'tools', 'odin', 'Odin3.exe'),
+    // Fallbacks: Downloads or Desktop
     path.join(userProfile, 'Downloads', 'Odin3_v3.14.4', 'Odin3_v3.14.4.exe'),
     path.join(userProfile, 'Downloads', 'Odin3_v3.14.4', 'Odin3.exe'),
     path.join(userProfile, 'Downloads', 'Odin3.exe'),
     path.join(userProfile, 'Desktop', 'Odin3_v3.14.4', 'Odin3_v3.14.4.exe'),
-    path.join(userProfile, 'Desktop', 'Odin3.exe'),
-    path.join(__dirname, 'tools', 'odin', 'Odin3_v3.14.4.exe')
+    path.join(userProfile, 'Desktop', 'Odin3.exe')
   ];
   for (const c of candidates) {
     if (fs.existsSync(c)) return c;
   }
   return null;
+}
+
+function findSamsungDriverInstaller() {
+  const userProfile = process.env.USERPROFILE || '';
+  const candidates = [
+    // Top Priority: Embedded in project repository
+    path.join(__dirname, 'tools', 'samsung', 'drivers', 'SAMSUNG_USB_Driver_for_Mobile_Phones_v1.9.5.0.exe'),
+    path.join(__dirname, 'tools', 'samsung', 'drivers', 'SAMSUNG_USB_Driver_for_Mobile_Phones.exe'),
+    path.join(__dirname, 'tools', 'drivers', 'SAMSUNG_USB_Driver_for_Mobile_Phones_v1.9.5.0.exe'),
+    path.join(userProfile, 'Downloads', 'SAMSUNG_USB_Driver_for_Mobile_Phones_v1.9.5.0.exe')
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  const driversDir = path.join(__dirname, 'tools', 'samsung', 'drivers');
+  if (fs.existsSync(driversDir)) {
+    try {
+      const files = fs.readdirSync(driversDir);
+      const match = files.find(f => f.toLowerCase().includes('samsung') && f.toLowerCase().endsWith('.exe'));
+      if (match) return path.join(driversDir, match);
+    } catch (_) {}
+  }
+  return null;
+}
+
+function isSamsungDriverInstalled() {
+  const candidates = [
+    'C:\\Program Files\\Samsung\\USB Drivers',
+    'C:\\Program Files (x86)\\Samsung\\USB Drivers'
+  ];
+  return candidates.some(c => fs.existsSync(c));
 }
 
 // Execute Fastboot command with promise & timeout
@@ -1118,18 +1154,48 @@ async function handleApi(req, res, pathname) {
     });
   }
 
+  // GET /api/samsung/status - Check Odin & Samsung USB Driver status
+  if (pathname === '/api/samsung/status' && req.method === 'GET') {
+    const odinPath = findOdin();
+    const installerPath = findSamsungDriverInstaller();
+    const driverInstalled = isSamsungDriverInstalled();
+    const isOdinEmbedded = odinPath ? odinPath.includes(path.join('tools', 'samsung')) || odinPath.includes(path.join('tools', 'odin')) : false;
+    const isInstallerEmbedded = installerPath ? installerPath.includes(path.join('tools', 'samsung')) : false;
+
+    return sendJson(res, 200, {
+      ok: true,
+      odin: {
+        available: !!odinPath,
+        path: odinPath,
+        isEmbedded: isOdinEmbedded,
+        version: 'v3.14.4'
+      },
+      driver: {
+        isInstalled: driverInstalled,
+        installerAvailable: !!installerPath,
+        installerPath: installerPath,
+        isInstallerEmbedded: isInstallerEmbedded,
+        version: 'v1.9.5.0'
+      }
+    });
+  }
+
   // POST /api/samsung/launch-odin - Launch Odin3 on desktop
   if (pathname === '/api/samsung/launch-odin' && req.method === 'POST') {
     const odinPath = findOdin();
     if (!odinPath) {
       return sendJson(res, 404, {
         ok: false,
-        message: 'ไม่พบไฟล์ Odin3.exe บนคอมพิวเตอร์ กรุณาตรวจสอบว่ามีโฟลเดอร์ Odin3_v3.14.4 ใน Downloads หรือ Desktop'
+        message: 'ไม่พบไฟล์ Odin3.exe บนคอมพิวเตอร์ กรุณาตรวจสอบโฟลเดอร์ tools/samsung/odin หรือ Downloads'
       });
     }
 
     try {
-      const child = execFile(odinPath, [], { detached: true, stdio: 'ignore' });
+      const child = execFile(odinPath, [], {
+        detached: true,
+        stdio: 'ignore',
+        cwd: path.dirname(odinPath)
+      });
       child.unref();
       return sendJson(res, 200, {
         ok: true,
@@ -1140,6 +1206,38 @@ async function handleApi(req, res, pathname) {
       return sendJson(res, 500, {
         ok: false,
         message: 'ไม่สามารถเปิดโปรแกรม Odin3 ได้: ' + err.message
+      });
+    }
+  }
+
+  // POST /api/samsung/install-driver - Launch Samsung USB Driver installer
+  if (pathname === '/api/samsung/install-driver' && req.method === 'POST') {
+    const installerPath = findSamsungDriverInstaller();
+    if (!installerPath) {
+      return sendJson(res, 404, {
+        ok: false,
+        message: 'ไม่พบไฟล์ตัวติดตั้ง Samsung USB Driver ในโฟลเดอร์ tools/samsung/drivers'
+      });
+    }
+
+    try {
+      const { exec } = require('child_process');
+      // Launch installer with UAC elevation via PowerShell Start-Process -Verb RunAs
+      exec(`powershell -Command "Start-Process '${installerPath.replace(/'/g, "''")}' -Verb RunAs"`, (err) => {
+        if (err) {
+          console.error('[Samsung Driver Installer Error]', err);
+        }
+      });
+
+      return sendJson(res, 200, {
+        ok: true,
+        installerPath,
+        message: 'เปิดตัวติดตั้ง Samsung USB Driver แล้ว กรุณากด Yes บนหน้าต่าง UAC เพื่อดำเนินการติดตั้ง'
+      });
+    } catch (err) {
+      return sendJson(res, 500, {
+        ok: false,
+        message: 'ไม่สามารถเปิดตัวติดตั้งได้: ' + err.message
       });
     }
   }

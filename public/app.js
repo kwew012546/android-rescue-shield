@@ -104,7 +104,10 @@ const el = {
   samModelBadge: document.getElementById('sam-model-badge'),
   samBitBadge: document.getElementById('sam-bit-badge'),
   samCscBadge: document.getElementById('sam-csc-badge'),
+  samOdinBadge: document.getElementById('sam-odin-badge'),
+  samDriverBadge: document.getElementById('sam-driver-badge'),
   btnLaunchOdin: document.getElementById('btn-launch-odin'),
+  btnSamInstallDriver: document.getElementById('btn-sam-install-driver'),
   btnSamEnterDownload: document.getElementById('btn-sam-enter-download'),
   btnSamDownloadRom: document.getElementById('btn-sam-download-rom'),
 
@@ -119,6 +122,7 @@ const el = {
 document.addEventListener('DOMContentLoaded', () => {
   checkDevice();
   bindEvents();
+  fetchSamsungStatus();
 });
 
 // Event Bindings
@@ -289,6 +293,9 @@ function bindEvents() {
   if (el.btnLaunchOdin) {
     el.btnLaunchOdin.addEventListener('click', handleLaunchOdin);
   }
+  if (el.btnSamInstallDriver) {
+    el.btnSamInstallDriver.addEventListener('click', handleInstallSamsungDriver);
+  }
   if (el.btnSamEnterDownload) {
     el.btnSamEnterDownload.addEventListener('click', () => handleReboot('download'));
   }
@@ -315,6 +322,7 @@ function switchTab(tabId) {
     }
   } else if (tabId === 'tab-flasher') {
     loadFastbootInfo();
+    fetchSamsungStatus();
   }
 }
 
@@ -1421,6 +1429,90 @@ async function handleLaunchOdin() {
     btn.innerHTML = origHtml;
     btn.disabled = false;
   }, 2500);
+}
+
+// Fetch Samsung Hub, Odin, and Driver Status
+async function fetchSamsungStatus() {
+  try {
+    const res = await fetch('/api/samsung/status');
+    const data = await res.json();
+    if (!data.ok) return;
+
+    // Odin Badge
+    if (el.samOdinBadge) {
+      if (data.odin.available) {
+        el.samOdinBadge.innerText = data.odin.isEmbedded
+          ? 'Odin: พร้อมใช้งาน (Embedded)'
+          : `Odin: พร้อมใช้งาน (${data.odin.version})`;
+        el.samOdinBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        el.samOdinBadge.style.color = '#34d399';
+      } else {
+        el.samOdinBadge.innerText = 'Odin: ไม่พบไฟล์';
+        el.samOdinBadge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        el.samOdinBadge.style.color = '#f87171';
+      }
+    }
+
+    // Driver Badge & Button
+    if (el.samDriverBadge) {
+      if (data.driver.isInstalled) {
+        el.samDriverBadge.innerText = `Driver: ติดตั้งแล้ว (${data.driver.version})`;
+        el.samDriverBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        el.samDriverBadge.style.color = '#34d399';
+        if (el.btnSamInstallDriver) {
+          el.btnSamInstallDriver.innerHTML = '<span class="btn-icon">✅</span> Samsung Driver ติดตั้งแล้ว (คลิกเพื่อลงซ้ำ)';
+        }
+      } else if (data.driver.installerAvailable) {
+        el.samDriverBadge.innerText = 'Driver: พร้อมติดตั้ง (ในโฟลเดอร์)';
+        el.samDriverBadge.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+        el.samDriverBadge.style.color = '#fbbf24';
+        if (el.btnSamInstallDriver) {
+          el.btnSamInstallDriver.innerHTML = '<span class="btn-icon">⚡</span> 1-คลิกติดตั้ง Samsung USB Driver';
+        }
+      } else {
+        el.samDriverBadge.innerText = 'Driver: ยังไม่ได้ติดตั้ง';
+        el.samDriverBadge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        el.samDriverBadge.style.color = '#f87171';
+      }
+    }
+  } catch (err) {
+    console.warn('[Samsung Status Error]', err);
+  }
+}
+
+// Launch Samsung Driver Installer
+async function handleInstallSamsungDriver() {
+  const btn = el.btnSamInstallDriver;
+  if (!btn) return;
+  const origHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerText = '⏳ กำลังเปิดตัวติดตั้ง Driver...';
+
+  try {
+    const res = await fetch('/api/samsung/install-driver', { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      btn.innerText = '✅ สั่งเปิดตัวติดตั้งแล้ว!';
+      showEmergencyMessage('✅ ' + data.message, 'success');
+      appendTerminal(`[SAMSUNG DRIVER] ${data.message}`);
+      if (data.installerPath) {
+        appendTerminal(`[SAMSUNG DRIVER] ที่อยู่ตัวติดตั้ง: ${data.installerPath}`);
+      }
+    } else {
+      btn.innerText = '❌ เกิดข้อผิดพลาด';
+      showEmergencyMessage(`❌ ${data.message}`, 'error');
+      appendTerminal(`[SAMSUNG DRIVER ERROR] ${data.message}`, 'error');
+    }
+  } catch (err) {
+    btn.innerText = '❌ เกิดข้อผิดพลาด';
+    appendTerminal(`[SAMSUNG DRIVER ERROR] ${err.message}`, 'error');
+  }
+
+  setTimeout(() => {
+    btn.innerHTML = origHtml;
+    btn.disabled = false;
+    fetchSamsungStatus();
+  }, 4000);
 }
 
 // Helper: Escape HTML

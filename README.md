@@ -47,11 +47,16 @@
 - **Curated Safety Presets:** มีระบบแนะนำความปลอดภัย (🟢 ปลอดภัยลบได้ / 🟡 แนะนำหากไม่ใช้)
 - **🔄 One-Click Restore:** สามารถกดปุ่ม **"กู้คืน"** แอปเดิมกลับมาได้ตลอดเวลา ไม่ต้องกลัวเครื่องมีปัญหา
 
-### ⚡ [โมดูล 4] แฟลชเครื่อง & กู้บริค (Fastboot & Sideload Flasher)
+### ⚡ [โมดูล 4] แฟลชเครื่อง & กู้บริค (Fastboot, Sideload & Samsung Flasher Hub)
 - **⚡ Partition Flasher:** แฟลชไฟล์ `.img` ตรงเข้าชิป (`boot`, `init_boot`, `recovery`, `vbmeta`, `vendor_boot`, `dtbo`, `super`, `system`, `userdata`) พร้อมระบบสแกนและเลือกพาร์ติชันอัตโนมัติตามชื่อไฟล์
 - **🚀 Temporary Boot:** ทดลองบูตเคอร์เนลหรือ Recovery ชั่วคราว (`fastboot boot <image>`) โดยไม่ต้องเขียนทับ ROM จริง
 - **🛟 A/B Slot Switcher (แก้ Bootloop):** สลับ Slot A <-> B กู้คืนเครื่องที่บูตวนหลังอัปเดตระบบผิดพลาด ข้อมูลไม่หาย 100%
 - **📥 Recovery Sideload:** ติดตั้งไฟล์ OTA Update, Custom ROM หรือ Magisk.zip ผ่าน `adb sideload` ใน Recovery Mode
+- **🔵 Samsung Technician Assistant Hub (Zero-Setup 100% Offline Bundle):**
+  - **Embedded Odin3 v3.14.4:** ฝังตัวโปรแกรม Odin3 ไว้ใน `tools/samsung/odin/` พร้อมเปิดใช้งานได้ทันที 1 คลิก Out-of-the-box
+  - **Embedded Samsung USB Driver v1.9.5.0:** ฝังตัวติดตั้งไดรเวอร์ใน `tools/samsung/drivers/` พร้อมปุ่ม 1-คลิกสั่งติดตั้งจากหน้าเว็บ
+  - **Auto Hardware & Binary Inspection:** ตรวจเช็กรหัสรุ่น, Binary Bit (SW REV), CSC อัตโนมัติ เลือกรอมศูนย์แท้ตรงรุ่นไม่ติดบล็อก
+  - **Visual 4-Slot Guide:** แนะนำการวางไฟล์ BL / AP / CP / HOME_CSC (ข้อมูลรูปถ่ายไม่หาย)
 - **🖥️ Live Console Execution:** หน้าต่างแสดงผลคำสั่งระดับ Low-Level แบบ Real-time
 
 ---
@@ -61,9 +66,9 @@
 | ยี่ห้อ / แบรนด์ | ระดับการรองรับ | โหมดที่ใช้ | รายละเอียด & เทคนิคช่าง |
 | :--- | :---: | :---: | :--- |
 | **Google Pixel** (1 - 9 Pro) | 🟢 100% (สมบูรณ์) | Fastboot / FastbootD | มาตรฐาน AOSP แท้ แฟลชได้ทุกพาร์ติชัน ปลดล็อกง่ายผ่าน `fastboot flashing unlock` |
+| **Samsung Galaxy** | 🟢 100% (สมบูรณ์) | Odin (Download Mode) / Sideload | มี **ศูนย์อำนวยความสะดวกช่าง Samsung** ฝัง Odin3 + USB Driver ในตัว เลือกรอมตรงรุ่น และสั่งเข้า Download Mode ได้ทันที |
 | **Xiaomi / Redmi / POCO** | 🟢 95% (สูงมาก) | Fastboot | แฟลชผ่าน Fastboot ROM (.tgz images) ต้องปลด Bootloader ผ่าน Mi Unlock Tool |
 | **OnePlus / Nothing / Motorola / Sony** | 🟢 100% (สมบูรณ์) | Fastboot / A-B Slot | รองรับ Fastboot เต็มตัว กู้เครื่องบูตวนได้ง่ายด้วยการสลับ Slot A/B |
-| **Samsung Galaxy** | 🟡 Partial (เฉพาะส่วน) | ADB Sideload / FastbootD | รอมศูนย์เต็มใช้ Odin (Download Mode) แต่รองรับ **ADB Sideload** ใน Recovery และ FastbootD ใน Android 11+ |
 | **OPPO / Realme / Vivo / iQOO** | 🟡 ปานกลาง | Sideload / Fastboot | ต้องขอสิทธิ์ปลดล็อกผ่านแอป Deep Testing รองรับ Recovery Sideload อัปเดตไฟล์ zip/ozip |
 | **Transsion** (Infinix, Tecno) | 🟢 สูง | Fastboot / MTK | รองรับการแฟลช GSI, Magisk Patched Boot ผ่าน Fastboot เมื่อเปิด OEM Unlock |
 | **Huawei (HarmonyOS)** | 🔴 จำกัด / แตกต่าง | Fastboot / HDC | EMUI เก่าใช้ Fastboot แต่ HarmonyOS NEXT สลัด AOSP ทิ้ง หันไปใช้ HDC แทน |
