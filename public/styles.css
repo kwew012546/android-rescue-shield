@@ -1463,4 +1463,16 @@ html, body {
   .search-box input, .custom-select, .toolbar-right .btn {
     width: 100%;
   }
+  .odin-slots-guide {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .samsung-hub-actions .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .odin-slots-guide {
+    grid-template-columns: 1fr;
+  }
 }

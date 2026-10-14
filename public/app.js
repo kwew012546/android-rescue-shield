@@ -434,13 +434,21 @@ function updateDeviceHeader(dev) {
   el.devBattery.textContent = dev.batteryLevel !== null ? `แบตเตอรี่: ${dev.batteryLevel}%` : 'แบตเตอรี่: -';
 
   // Update Samsung Hub if info is available
-  if (dev.samsungInfo) {
+  if (dev.samsungInfo && dev.samsungInfo.isSamsung) {
     if (el.samModelBadge) el.samModelBadge.textContent = `Model: ${dev.samsungInfo.model}`;
     if (el.samBitBadge) el.samBitBadge.textContent = `Binary: Bit ${dev.samsungInfo.binaryBit || '-'}`;
     if (el.samCscBadge) el.samCscBadge.textContent = `CSC: ${dev.samsungInfo.csc || 'THL'}`;
     if (el.btnSamDownloadRom && dev.samsungInfo.firmwareUrl) {
       el.btnSamDownloadRom.href = dev.samsungInfo.firmwareUrl;
       el.btnSamDownloadRom.title = `คลิกเพื่อดาวน์โหลดรอมศูนย์ตรงรุ่น ${dev.samsungInfo.model} (${dev.samsungInfo.csc})`;
+    }
+  } else {
+    if (el.samModelBadge) el.samModelBadge.textContent = 'Samsung: สแตนด์บาย (Odin พร้อม)';
+    if (el.samBitBadge) el.samBitBadge.textContent = 'Binary: -';
+    if (el.samCscBadge) el.samCscBadge.textContent = 'CSC: -';
+    if (el.btnSamDownloadRom) {
+      el.btnSamDownloadRom.href = 'https://samfw.com';
+      el.btnSamDownloadRom.title = 'ค้นหารอมศูนย์ Samsung';
     }
   }
 }
@@ -1413,11 +1421,9 @@ async function handleLaunchOdin() {
     const data = await res.json();
     if (data.ok) {
       btn.innerText = '✅ เปิด Odin3 แล้ว!';
-      showEmergencyMessage('✅ เปิดโปรแกรม Odin3 บนหน้าจอเรียบร้อยแล้ว', 'success');
       appendTerminal(`[ODIN3] สั่งเปิดโปรแกรมสำเร็จ: ${data.odinPath || 'Odin3.exe'}`);
     } else {
       btn.innerText = '❌ ไม่พบไฟล์';
-      showEmergencyMessage(`❌ ${data.message}`, 'error');
       appendTerminal(`[ODIN3 ERROR] ${data.message}`, 'error');
     }
   } catch (err) {
@@ -1493,14 +1499,12 @@ async function handleInstallSamsungDriver() {
     const data = await res.json();
     if (data.ok) {
       btn.innerText = '✅ สั่งเปิดตัวติดตั้งแล้ว!';
-      showEmergencyMessage('✅ ' + data.message, 'success');
       appendTerminal(`[SAMSUNG DRIVER] ${data.message}`);
       if (data.installerPath) {
         appendTerminal(`[SAMSUNG DRIVER] ที่อยู่ตัวติดตั้ง: ${data.installerPath}`);
       }
     } else {
       btn.innerText = '❌ เกิดข้อผิดพลาด';
-      showEmergencyMessage(`❌ ${data.message}`, 'error');
       appendTerminal(`[SAMSUNG DRIVER ERROR] ${data.message}`, 'error');
     }
   } catch (err) {
