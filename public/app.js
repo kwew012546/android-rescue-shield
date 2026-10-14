@@ -95,6 +95,7 @@ const el = {
   btnSlotA: document.getElementById('btn-slot-a'),
   btnSlotB: document.getElementById('btn-slot-b'),
   btnEraseCache: document.getElementById('btn-erase-cache'),
+  btnEraseUserdata: document.getElementById('btn-erase-userdata'),
   terminalBody: document.getElementById('terminal-body'),
   btnClearTerminal: document.getElementById('btn-clear-terminal'),
   btnCopyTerminal: document.getElementById('btn-copy-terminal'),
@@ -273,6 +274,7 @@ function bindEvents() {
   if (el.btnSlotA) el.btnSlotA.addEventListener('click', () => handleSwitchSlot('a'));
   if (el.btnSlotB) el.btnSlotB.addEventListener('click', () => handleSwitchSlot('b'));
   if (el.btnEraseCache) el.btnEraseCache.addEventListener('click', handleEraseCache);
+  if (el.btnEraseUserdata) el.btnEraseUserdata.addEventListener('click', handleEraseUserdata);
 
   // Terminal Controls
   if (el.btnClearTerminal) {
@@ -380,7 +382,9 @@ async function checkDevice() {
       showState('disconnected');
       updateHeaderPill('disconnected', 'ไม่ได้เชื่อมต่อ');
       stopTopAppMonitor();
-      if (data.message && data.state === 'error') {
+      if (state.justDisabledAdb) {
+        el.emptyFeedback.innerHTML = '✅ <strong>คุณได้สั่งปิดโหมดนักพัฒนาเรียบร้อยแล้ว!</strong><br>ตัวเครื่องปลอดภัยและพร้อมเข้าใช้งานแอปธนาคาร / เป๋าตัง ได้ทันที สามารถถอดสาย USB ออกได้เลยครับ';
+      } else if (data.message && data.state === 'error') {
         el.emptyFeedback.textContent = data.message;
       }
     }
@@ -848,14 +852,20 @@ async function executeUninstall() {
       renderAppsTable();
       showEmergencyMessage(`✅ ถอนการติดตั้ง ${pkg} สำเร็จแล้ว`, 'success');
     } else {
-      alert(`ไม่สามารถถอนการติดตั้งได้: ${data.message}`);
-      btn.disabled = false;
-      btn.innerHTML = `ยืนยันการลบแอป`;
+      showEmergencyMessage(`❌ ไม่สามารถถอนการติดตั้ง: ${data.message}`, 'error');
+      btn.innerHTML = `❌ ล้มเหลว`;
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.innerHTML = `ยืนยันการลบแอป`;
+      }, 2000);
     }
   } catch (err) {
-    alert(`เกิดข้อผิดพลาด: ${err.message}`);
-    btn.disabled = false;
-    btn.innerHTML = `ยืนยันการลบแอป`;
+    showEmergencyMessage(`❌ เกิดข้อผิดพลาด: ${err.message}`, 'error');
+    btn.innerHTML = `❌ เกิดข้อผิดพลาด`;
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = `ยืนยันการลบแอป`;
+    }, 2000);
   }
 }
 
@@ -928,6 +938,7 @@ async function handleDisableAdb() {
     const res = await fetch('/api/disable-adb', { method: 'POST' });
     const data = await res.json();
     if (data.ok) {
+      state.justDisabledAdb = true;
       showEmergencyMessage(`✅ ${data.message}`, 'success');
       el.labelAdbStatus.className = 'status-indicator ready';
       el.labelAdbStatus.textContent = '✅ ปิดสำเร็จแล้ว สามารถดึงสายออกได้เลย';
@@ -1206,11 +1217,13 @@ async function handleFlashImage() {
   const disableVerity = el.fbDisableVerity.checked;
 
   if (!filePath) {
-    alert('กรุณาระบุที่อยู่ไฟล์ Image (.img) บนคอมพิวเตอร์');
+    if (el.fbFilePath) el.fbFilePath.focus();
+    appendTerminal('⚠️ [แจ้งเตือน] กรุณาระบุหรือคลิกเลือกไฟล์ Image (.img) บนคอมพิวเตอร์ก่อนสั่งแฟลช', 'error');
     return;
   }
   if (!partition) {
-    alert('กรุณาเลือกหรือพิมพ์ชื่อพาร์ติชันเป้าหมาย');
+    if (el.fbPartitionSelect) el.fbPartitionSelect.focus();
+    appendTerminal('⚠️ [แจ้งเตือน] กรุณาเลือกหรือพิมพ์ชื่อพาร์ติชันเป้าหมาย', 'error');
     return;
   }
 
@@ -1231,12 +1244,10 @@ async function handleFlashImage() {
       appendTerminal(`[FLASH SUCCESS] ${data.message}`, 'success');
       if (data.output) appendTerminal(data.output);
       btn.innerText = '✅ แฟลชสำเร็จ!';
-      showEmergencyMessage(`✅ แฟลชพาร์ติชัน ${partition} สำเร็จแล้ว`, 'success');
     } else {
       appendTerminal(`[FLASH FAILED] ${data.message}`, 'error');
       if (data.output) appendTerminal(data.output, 'error');
       btn.innerText = '❌ ผิดพลาด';
-      showEmergencyMessage(`❌ การแฟลชล้มเหลว: ${data.message}`, 'error');
     }
   } catch (err) {
     appendTerminal(`[NETWORK ERROR] ${err.message}`, 'error');
@@ -1253,7 +1264,8 @@ async function handleFlashImage() {
 async function handleFastbootBoot() {
   const filePath = (el.fbFilePath.value || '').trim();
   if (!filePath) {
-    alert('กรุณาระบุที่อยู่ไฟล์ Image (.img) ที่ต้องการทดลองบูต');
+    if (el.fbFilePath) el.fbFilePath.focus();
+    appendTerminal('⚠️ [แจ้งเตือน] กรุณาระบุหรือคลิกเลือกไฟล์ Image (.img) ที่ต้องการทดลองบูต', 'error');
     return;
   }
 
@@ -1294,7 +1306,8 @@ async function handleFastbootBoot() {
 async function handleSideload() {
   const filePath = (el.sideloadFilePath.value || '').trim();
   if (!filePath) {
-    alert('กรุณาระบุที่อยู่ไฟล์ .zip ที่ต้องการ Sideload');
+    if (el.sideloadFilePath) el.sideloadFilePath.focus();
+    appendTerminal('⚠️ [แจ้งเตือน] กรุณาระบุหรือเลือกไฟล์ .zip ที่ต้องการ Sideload', 'error');
     return;
   }
 
@@ -1347,11 +1360,9 @@ async function handleSwitchSlot(slot) {
     const data = await res.json();
     if (data.ok) {
       appendTerminal(`[SLOT SUCCESS] ${data.message}`, 'success');
-      showEmergencyMessage(`✅ สลับไปใช้ Slot ${slot.toUpperCase()} แล้ว`, 'success');
       loadFastbootInfo();
     } else {
       appendTerminal(`[SLOT FAILED] ${data.message}`, 'error');
-      showEmergencyMessage(`❌ สลับสล็อตไม่สำเร็จ: ${data.message}`, 'error');
     }
   } catch (err) {
     appendTerminal(`[SLOT ERROR] ${err.message}`, 'error');
@@ -1371,13 +1382,32 @@ async function handleEraseCache() {
     const data = await res.json();
     if (data.ok) {
       appendTerminal(`[ERASE SUCCESS] ${data.message}`, 'success');
-      showEmergencyMessage('✅ ล้างแคชสำเร็จแล้ว', 'success');
     } else {
       appendTerminal(`[ERASE FAILED] ${data.message}`, 'error');
-      showEmergencyMessage(`❌ ล้างแคชไม่สำเร็จ: ${data.message}`, 'error');
     }
   } catch (err) {
     appendTerminal(`[ERASE ERROR] ${err.message}`, 'error');
+  }
+}
+
+// Erase Userdata (Clean Wipe / Factory Reset)
+async function handleEraseUserdata() {
+  if (!confirm('⚠️ คำเตือนสำคัญ!\n\nคุณกำลังจะล้างข้อมูลพาร์ติชัน Userdata (Clean Wipe / Factory Reset)\nรูปภาพ แอป และรหัสผ่านหน้าจอจะถูกลบทั้งหมดเหมือนเพิ่งแกะกล่องใหม่\n\nต้องการดำเนินการต่อใช่หรือไม่?')) return;
+  appendTerminal('[CLEAN WIPE] กำลังล้างพาร์ติชัน Userdata (fastboot erase userdata)...');
+  try {
+    const res = await fetch('/api/fastboot/erase', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ partition: 'userdata' })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      appendTerminal(`[CLEAN WIPE SUCCESS] ${data.message} - เครื่องอยู่ในสภาพแกะกล่องแล้ว!`, 'success');
+    } else {
+      appendTerminal(`[CLEAN WIPE FAILED] ${data.message}`, 'error');
+    }
+  } catch (err) {
+    appendTerminal(`[CLEAN WIPE ERROR] ${err.message}`, 'error');
   }
 }
 

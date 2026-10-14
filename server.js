@@ -127,6 +127,57 @@ function isSamsungDriverInstalled() {
   return candidates.some(c => fs.existsSync(c));
 }
 
+// Smart path resolver: handles browser-sandbox paths (e.g. fakepath or filename-only)
+function resolveFilePath(inputPath) {
+  if (!inputPath) return null;
+  const trimmed = inputPath.trim().replace(/^["']|["']$/g, '');
+  if (!trimmed) return null;
+
+  if (path.isAbsolute(trimmed) && fs.existsSync(trimmed)) {
+    return trimmed;
+  }
+
+  const userProfile = process.env.USERPROFILE || '';
+  const candidates = [
+    trimmed,
+    path.join(process.cwd(), trimmed),
+    path.join(userProfile, 'Downloads', trimmed),
+    path.join(userProfile, 'Desktop', trimmed),
+    path.join(__dirname, 'tools', trimmed)
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return trimmed;
+}
+
+// Resilient multi-layered top app package getter
+async function getTopPackageName() {
+  const [winRes, actRes] = await Promise.all([
+    runAdb(['shell', 'dumpsys', 'window']),
+    runAdb(['shell', 'dumpsys', 'activity', 'activities'])
+  ]);
+
+  let topPackage = null;
+  if (winRes.ok) {
+    const focusMatch = winRes.stdout.match(/mCurrentFocus[^\n]*?([a-zA-Z0-9_.]+)\/([a-zA-Z0-9_.$]+)/);
+    if (focusMatch) topPackage = focusMatch[1];
+    if (!topPackage) {
+      const appMatch = winRes.stdout.match(/mFocusedApp[^\n]*?([a-zA-Z0-9_.]+)\/([a-zA-Z0-9_.$]+)/);
+      if (appMatch) topPackage = appMatch[1];
+    }
+  }
+  if (!topPackage && actRes.ok) {
+    const resumedMatch = actRes.stdout.match(/mResumedActivity:[^\n]*?([a-zA-Z0-9_.]+)\/([a-zA-Z0-9_.$]+)/);
+    if (resumedMatch) topPackage = resumedMatch[1];
+    if (!topPackage) {
+      const topResumedMatch = actRes.stdout.match(/topResumedActivity=[^\n]*?([a-zA-Z0-9_.]+)\/([a-zA-Z0-9_.$]+)/);
+      if (topResumedMatch) topPackage = topResumedMatch[1];
+    }
+  }
+  return topPackage;
+}
+
 // Execute Fastboot command with promise & timeout
 // Note: Fastboot on Windows outputs both progress & status to stderr
 function runFastboot(args, timeoutMs = 60000) {
@@ -446,12 +497,7 @@ async function handleApi(req, res, pathname) {
     let targetPackage = body.package;
 
     if (!targetPackage) {
-      // Find top app first
-      const winRes = await runAdb(['shell', 'dumpsys', 'window']);
-      if (winRes.ok) {
-        const match = winRes.stdout.match(/mCurrentFocus[^\n]*?([a-zA-Z0-9_.]+)\/([a-zA-Z0-9_.$]+)/);
-        if (match) targetPackage = match[1];
-      }
+      targetPackage = await getTopPackageName();
     }
 
     if (!targetPackage) {
@@ -733,7 +779,21 @@ async function handleApi(req, res, pathname) {
 
     const rebRes = await runAdb(args);
     if (!rebRes.ok) {
-      return sendJson(res, 500, { ok: false, message: 'คำสั่งรีบูตไม่สำเร็จ: ' + rebRes.stderr });
+      // If ADB failed, check if device is in Fastboot mode and reboot via Fastboot!
+      let fbArgs = ['reboot'];
+      if (mode === 'bootloader') fbArgs = ['reboot', 'bootloader'];
+      else if (mode === 'recovery') fbArgs = ['reboot', 'recovery'];
+      else if (mode === 'fastbootd') fbArgs = ['reboot', 'fastboot'];
+
+      const fbRebRes = await runFastboot(fbArgs, 5000);
+      if (fbRebRes.ok) {
+        return sendJson(res, 200, {
+          ok: true,
+          message: `${msg} (ดำเนินการผ่าน Fastboot สำเร็จ)`
+        });
+      }
+
+      return sendJson(res, 500, { ok: false, message: 'คำสั่งรีบูตไม่สำเร็จ: ' + (rebRes.stderr || rebRes.error) });
     }
     return sendJson(res, 200, {
       ok: true,
@@ -992,11 +1052,12 @@ async function handleApi(req, res, pathname) {
       return sendJson(res, 400, { ok: false, message: 'กรุณาระบุที่อยู่ไฟล์ (File Path) บนคอมพิวเตอร์' });
     }
 
-    if (!fs.existsSync(filePath)) {
+    const resolvedPath = resolveFilePath(filePath);
+    if (!resolvedPath || !fs.existsSync(resolvedPath)) {
       return sendJson(res, 400, { ok: false, message: `ไม่พบไฟล์ที่ระบุ: ${filePath}` });
     }
 
-    const stat = fs.statSync(filePath);
+    const stat = fs.statSync(resolvedPath);
     if (!stat.isFile()) {
       return sendJson(res, 400, { ok: false, message: 'เส้นทางที่ระบุไม่ใช่ไฟล์ที่ถูกต้อง' });
     }
@@ -1012,9 +1073,9 @@ async function handleApi(req, res, pathname) {
 
     let args = [];
     if (partition === 'vbmeta' && disableVerity) {
-      args = ['--disable-verity', '--disable-verification', 'flash', 'vbmeta', filePath];
+      args = ['--disable-verity', '--disable-verification', 'flash', 'vbmeta', resolvedPath];
     } else {
-      args = ['flash', partition, filePath];
+      args = ['flash', partition, resolvedPath];
     }
 
     const flashRes = await runFastboot(args, 180000); // 3 minutes timeout
@@ -1031,9 +1092,10 @@ async function handleApi(req, res, pathname) {
   if (pathname === '/api/fastboot/boot' && req.method === 'POST') {
     const body = await parseJsonBody(req);
     const filePath = (body.filePath || '').trim();
+    const resolvedPath = resolveFilePath(filePath);
 
-    if (!filePath || !fs.existsSync(filePath)) {
-      return sendJson(res, 400, { ok: false, message: 'ไม่พบไฟล์อิมเมจที่ระบุบนคอมพิวเตอร์' });
+    if (!resolvedPath || !fs.existsSync(resolvedPath)) {
+      return sendJson(res, 400, { ok: false, message: `ไม่พบไฟล์อิมเมจที่ระบุบนคอมพิวเตอร์: ${filePath}` });
     }
 
     const devCheck = await runFastboot(['devices'], 3000);
@@ -1041,7 +1103,7 @@ async function handleApi(req, res, pathname) {
       return sendJson(res, 400, { ok: false, message: 'ไม่พบอุปกรณ์ในโหมด Fastboot' });
     }
 
-    const bootRes = await runFastboot(['boot', filePath], 60000);
+    const bootRes = await runFastboot(['boot', resolvedPath], 60000);
     return sendJson(res, 200, {
       ok: bootRes.ok,
       message: bootRes.ok
@@ -1134,16 +1196,17 @@ async function handleApi(req, res, pathname) {
   if (pathname === '/api/sideload' && req.method === 'POST') {
     const body = await parseJsonBody(req);
     const filePath = (body.filePath || '').trim();
+    const resolvedPath = resolveFilePath(filePath);
 
-    if (!filePath || !fs.existsSync(filePath)) {
-      return sendJson(res, 400, { ok: false, message: 'ไม่พบไฟล์ .zip ที่ระบุบนคอมพิวเตอร์' });
+    if (!resolvedPath || !fs.existsSync(resolvedPath)) {
+      return sendJson(res, 400, { ok: false, message: `ไม่พบไฟล์ .zip ที่ระบุบนคอมพิวเตอร์: ${filePath}` });
     }
 
-    if (!filePath.toLowerCase().endsWith('.zip')) {
+    if (!resolvedPath.toLowerCase().endsWith('.zip')) {
       return sendJson(res, 400, { ok: false, message: 'ไฟล์ Sideload ต้องเป็นนามสกุล .zip เท่านั้น' });
     }
 
-    const sideRes = await runAdb(['sideload', filePath], 300000); // 5 minutes timeout
+    const sideRes = await runAdb(['sideload', resolvedPath], 300000); // 5 minutes timeout
     const combined = [sideRes.stdout, sideRes.stderr].filter(Boolean).join('\n');
     return sendJson(res, 200, {
       ok: sideRes.ok,
