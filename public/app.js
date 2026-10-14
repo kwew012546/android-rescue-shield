@@ -75,7 +75,10 @@ const el = {
   fbSlotBadge: document.getElementById('fb-slot-badge'),
   btnFbRefresh: document.getElementById('btn-fb-refresh'),
   btnRebootToBootloader: document.getElementById('btn-reboot-to-bootloader'),
+  btnRebootToFastbootd: document.getElementById('btn-reboot-to-fastbootd'),
   btnRebootToRecovery: document.getElementById('btn-reboot-to-recovery'),
+  btnRebootToDownload: document.getElementById('btn-reboot-to-download'),
+  btnRebootToEdl: document.getElementById('btn-reboot-to-edl'),
   btnRebootToSystem: document.getElementById('btn-reboot-to-system'),
   fbFilePath: document.getElementById('fb-file-path'),
   fbFileBrowser: document.getElementById('fb-file-browser'),
@@ -186,8 +189,17 @@ function bindEvents() {
   if (el.btnRebootToBootloader) {
     el.btnRebootToBootloader.addEventListener('click', () => handleFastbootReboot('bootloader'));
   }
+  if (el.btnRebootToFastbootd) {
+    el.btnRebootToFastbootd.addEventListener('click', () => handleReboot('fastbootd'));
+  }
   if (el.btnRebootToRecovery) {
     el.btnRebootToRecovery.addEventListener('click', () => handleFastbootReboot('recovery'));
+  }
+  if (el.btnRebootToDownload) {
+    el.btnRebootToDownload.addEventListener('click', () => handleReboot('download'));
+  }
+  if (el.btnRebootToEdl) {
+    el.btnRebootToEdl.addEventListener('click', () => handleReboot('edl'));
   }
   if (el.btnRebootToSystem) {
     el.btnRebootToSystem.addEventListener('click', () => handleFastbootReboot('system'));

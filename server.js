@@ -641,6 +641,12 @@ async function handleApi(req, res, pathname) {
     } else if (mode === 'sideload') {
       args = ['reboot', 'sideload'];
       msg = 'กำลังรีสตาร์ทมือถือเข้าสู่โหมด Sideload...';
+    } else if (mode === 'download') {
+      args = ['reboot', 'download'];
+      msg = 'กำลังรีสตาร์ทมือถือเข้าสู่ Samsung Download Mode...';
+    } else if (mode === 'edl') {
+      args = ['reboot', 'edl'];
+      msg = 'กำลังรีสตาร์ทมือถือเข้าสู่ Qualcomm EDL Mode (9008)...';
     }
 
     const rebRes = await runAdb(args);
