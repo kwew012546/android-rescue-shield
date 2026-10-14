@@ -11,7 +11,12 @@ const state = {
   topAppTimer: null,
   activeTab: 'tab-rescue',
   debloatApps: [],
-  bankData: null
+  bankData: null,
+  scannedSamsungFirmware: {
+    slots: null,
+    targetDir: '',
+    activeWipeMode: 'clean' // 'clean' or 'keep'
+  }
 };
 
 // DOM Elements
@@ -111,6 +116,35 @@ const el = {
   btnSamInstallDriver: document.getElementById('btn-sam-install-driver'),
   btnSamEnterDownload: document.getElementById('btn-sam-enter-download'),
   btnSamDownloadRom: document.getElementById('btn-sam-download-rom'),
+
+  // Samsung Auto-Slotter & Wipe Selector
+  samFolderInput: document.getElementById('sam-folder-input'),
+  btnScanDownloadsRom: document.getElementById('btn-scan-downloads-rom'),
+  btnScanCustomFolder: document.getElementById('btn-scan-custom-folder'),
+  samScanStatus: document.getElementById('sam-scan-status'),
+  btnModeCleanWipe: document.getElementById('btn-mode-clean-wipe'),
+  btnModeKeepData: document.getElementById('btn-mode-keep-data'),
+  slotCardBl: document.getElementById('slot-card-bl'),
+  slotCardAp: document.getElementById('slot-card-ap'),
+  slotCardCp: document.getElementById('slot-card-cp'),
+  slotCardCsc: document.getElementById('slot-card-csc'),
+  tagBlStatus: document.getElementById('tag-bl-status'),
+  tagApStatus: document.getElementById('tag-ap-status'),
+  tagCpStatus: document.getElementById('tag-cp-status'),
+  tagCscMode: document.getElementById('tag-csc-mode'),
+  textBlFile: document.getElementById('text-bl-file'),
+  textApFile: document.getElementById('text-ap-file'),
+  textCpFile: document.getElementById('text-cp-file'),
+  textCscFile: document.getElementById('text-csc-file'),
+  textBlSize: document.getElementById('text-bl-size'),
+  textApSize: document.getElementById('text-ap-size'),
+  textCpSize: document.getElementById('text-cp-size'),
+  textCscSize: document.getElementById('text-csc-size'),
+  btnCopyBl: document.getElementById('btn-copy-bl'),
+  btnCopyAp: document.getElementById('btn-copy-ap'),
+  btnCopyCp: document.getElementById('btn-copy-cp'),
+  btnCopyCsc: document.getElementById('btn-copy-csc'),
+  btnCopyAllSlots: document.getElementById('btn-copy-all-slots'),
 
   // Modal
   modalUninstall: document.getElementById('modal-uninstall'),
@@ -300,6 +334,44 @@ function bindEvents() {
   }
   if (el.btnSamEnterDownload) {
     el.btnSamEnterDownload.addEventListener('click', () => handleReboot('download'));
+  }
+
+  // Samsung Auto-Slotter & Wipe Selector Events
+  if (el.btnScanDownloadsRom) {
+    el.btnScanDownloadsRom.addEventListener('click', () => {
+      scanSamsungFirmware('');
+    });
+  }
+  if (el.btnScanCustomFolder) {
+    el.btnScanCustomFolder.addEventListener('click', () => {
+      const folder = (el.samFolderInput ? el.samFolderInput.value : '').trim();
+      scanSamsungFirmware(folder);
+    });
+  }
+  if (el.btnModeCleanWipe) {
+    el.btnModeCleanWipe.addEventListener('click', () => {
+      setSamsungWipeMode('clean');
+    });
+  }
+  if (el.btnModeKeepData) {
+    el.btnModeKeepData.addEventListener('click', () => {
+      setSamsungWipeMode('keep');
+    });
+  }
+  if (el.btnCopyBl) {
+    el.btnCopyBl.addEventListener('click', () => copySlotPath('BL', el.btnCopyBl));
+  }
+  if (el.btnCopyAp) {
+    el.btnCopyAp.addEventListener('click', () => copySlotPath('AP', el.btnCopyAp));
+  }
+  if (el.btnCopyCp) {
+    el.btnCopyCp.addEventListener('click', () => copySlotPath('CP', el.btnCopyCp));
+  }
+  if (el.btnCopyCsc) {
+    el.btnCopyCsc.addEventListener('click', () => copySlotPath('CSC', el.btnCopyCsc));
+  }
+  if (el.btnCopyAllSlots) {
+    el.btnCopyAllSlots.addEventListener('click', copyAllSlotPaths);
   }
 
   el.btnCancelUninstall.addEventListener('click', closeModal);
@@ -1559,4 +1631,237 @@ function escapeHtml(str) {
     "'": '&#39;',
     '"': '&quot;'
   }[tag] || tag));
+}
+
+// ==============================================================
+// Samsung Firmware Auto-Slotter & Wipe Selector Methods
+// ==============================================================
+
+function setSamsungWipeMode(mode) {
+  state.scannedSamsungFirmware.activeWipeMode = mode;
+  if (mode === 'clean') {
+    if (el.btnModeCleanWipe) el.btnModeCleanWipe.classList.add('active');
+    if (el.btnModeKeepData) el.btnModeKeepData.classList.remove('active');
+    if (el.tagCscMode) {
+      el.tagCscMode.innerText = 'โหมด Clean Wipe';
+      el.tagCscMode.style.color = '#fbbf24';
+      el.tagCscMode.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+    }
+    if (el.slotCardCsc) {
+      el.slotCardCsc.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+    }
+  } else {
+    if (el.btnModeCleanWipe) el.btnModeCleanWipe.classList.remove('active');
+    if (el.btnModeKeepData) el.btnModeKeepData.classList.add('active');
+    if (el.tagCscMode) {
+      el.tagCscMode.innerText = 'โหมด Keep Data (รูปไม่หาย)';
+      el.tagCscMode.style.color = '#34d399';
+      el.tagCscMode.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+    }
+    if (el.slotCardCsc) {
+      el.slotCardCsc.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+    }
+  }
+  renderSamsungFirmwareSlots();
+}
+
+async function scanSamsungFirmware(folderPath) {
+  const btn = el.btnScanDownloadsRom;
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-spinner"></span> กำลังสแกน...';
+  }
+  if (el.samScanStatus) {
+    el.samScanStatus.innerHTML = '<span class="loading-spinner"></span> กำลังค้นหาไฟล์รอมศูนย์ (.tar.md5)...';
+  }
+
+  try {
+    const res = await fetch('/api/samsung/scan-firmware', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folderPath: folderPath || '' })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      state.scannedSamsungFirmware.slots = data.slots;
+      state.scannedSamsungFirmware.targetDir = data.targetDir;
+      if (el.samFolderInput) el.samFolderInput.value = data.targetDir;
+
+      if (data.foundCount > 0) {
+        if (el.samScanStatus) {
+          el.samScanStatus.innerHTML = `✅ ${data.message}`;
+          el.samScanStatus.style.color = '#34d399';
+        }
+        appendTerminal(`[SAMSUNG ROM SCAN] พบไฟล์รอม ${data.foundCount}/4 ส่วนใน: ${data.targetDir}`, 'success');
+      } else {
+        if (el.samScanStatus) {
+          el.samScanStatus.innerHTML = `⚠️ ไม่พบไฟล์รอม .tar.md5 ในโฟลเดอร์นี้ กรุณาแตกไฟล์ .zip ก่อน`;
+          el.samScanStatus.style.color = '#f59e0b';
+        }
+        appendTerminal(`[SAMSUNG ROM SCAN] ไม่พบไฟล์รอมใน: ${data.targetDir}`, 'warning');
+      }
+      renderSamsungFirmwareSlots();
+    } else {
+      if (el.samScanStatus) {
+        el.samScanStatus.innerHTML = `❌ ${data.message}`;
+        el.samScanStatus.style.color = '#f87171';
+      }
+      appendTerminal(`[SAMSUNG ROM SCAN ERROR] ${data.message}`, 'error');
+    }
+  } catch (err) {
+    if (el.samScanStatus) {
+      el.samScanStatus.innerHTML = `❌ ข้อผิดพลาด: ${err.message}`;
+      el.samScanStatus.style.color = '#f87171';
+    }
+    appendTerminal(`[SAMSUNG ROM SCAN ERROR] ${err.message}`, 'error');
+  } finally {
+    if (btn) {
+      btn.innerHTML = origHtml;
+      btn.disabled = false;
+    }
+  }
+}
+
+function renderSamsungFirmwareSlots() {
+  const { slots, activeWipeMode } = state.scannedSamsungFirmware;
+  if (!slots) return;
+
+  // BL Slot
+  if (slots.BL) {
+    if (el.textBlFile) {
+      el.textBlFile.innerText = slots.BL.fileName;
+      el.textBlFile.title = slots.BL.fullPath;
+    }
+    if (el.textBlSize) el.textBlSize.innerText = `ขนาด: ${slots.BL.sizeMb} MB`;
+    if (el.tagBlStatus) {
+      el.tagBlStatus.innerText = 'พร้อมใช้งาน';
+      el.tagBlStatus.style.color = '#34d399';
+      el.tagBlStatus.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+    }
+    if (el.slotCardBl) el.slotCardBl.classList.add('matched');
+    if (el.btnCopyBl) el.btnCopyBl.disabled = false;
+  } else {
+    if (el.textBlFile) el.textBlFile.innerText = 'ไม่พบไฟล์ BL_...';
+    if (el.tagBlStatus) {
+      el.tagBlStatus.innerText = 'ขาดไฟล์';
+      el.tagBlStatus.style.color = '#f87171';
+      el.tagBlStatus.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+    }
+    if (el.slotCardBl) el.slotCardBl.classList.remove('matched');
+    if (el.btnCopyBl) el.btnCopyBl.disabled = true;
+  }
+
+  // AP Slot
+  if (slots.AP) {
+    if (el.textApFile) {
+      el.textApFile.innerText = slots.AP.fileName;
+      el.textApFile.title = slots.AP.fullPath;
+    }
+    if (el.textApSize) el.textApSize.innerText = `ขนาด: ${slots.AP.sizeGb} GB`;
+    if (el.tagApStatus) {
+      el.tagApStatus.innerText = 'พร้อมใช้งาน';
+      el.tagApStatus.style.color = '#34d399';
+      el.tagApStatus.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+    }
+    if (el.slotCardAp) el.slotCardAp.classList.add('matched');
+    if (el.btnCopyAp) el.btnCopyAp.disabled = false;
+  } else {
+    if (el.textApFile) el.textApFile.innerText = 'ไม่พบไฟล์ AP_...';
+    if (el.tagApStatus) {
+      el.tagApStatus.innerText = 'ขาดไฟล์';
+      el.tagApStatus.style.color = '#f87171';
+      el.tagApStatus.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+    }
+    if (el.slotCardAp) el.slotCardAp.classList.remove('matched');
+    if (el.btnCopyAp) el.btnCopyAp.disabled = true;
+  }
+
+  // CP Slot
+  if (slots.CP) {
+    if (el.textCpFile) {
+      el.textCpFile.innerText = slots.CP.fileName;
+      el.textCpFile.title = slots.CP.fullPath;
+    }
+    if (el.textCpSize) el.textCpSize.innerText = `ขนาด: ${slots.CP.sizeMb} MB`;
+    if (el.tagCpStatus) {
+      el.tagCpStatus.innerText = 'พร้อมใช้งาน';
+      el.tagCpStatus.style.color = '#34d399';
+      el.tagCpStatus.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+    }
+    if (el.slotCardCp) el.slotCardCp.classList.add('matched');
+    if (el.btnCopyCp) el.btnCopyCp.disabled = false;
+  } else {
+    if (el.textCpFile) el.textCpFile.innerText = 'ไม่พบไฟล์ CP_...';
+    if (el.tagCpStatus) {
+      el.tagCpStatus.innerText = 'ขาดไฟล์';
+      el.tagCpStatus.style.color = '#f87171';
+      el.tagCpStatus.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+    }
+    if (el.slotCardCp) el.slotCardCp.classList.remove('matched');
+    if (el.btnCopyCp) el.btnCopyCp.disabled = true;
+  }
+
+  // CSC Slot (Clean vs Keep)
+  const cscFile = activeWipeMode === 'clean' ? slots.CSC : slots.HOME_CSC;
+  if (cscFile) {
+    if (el.textCscFile) {
+      el.textCscFile.innerText = cscFile.fileName;
+      el.textCscFile.title = cscFile.fullPath;
+    }
+    if (el.textCscSize) el.textCscSize.innerText = `ขนาด: ${cscFile.sizeMb} MB`;
+    if (el.slotCardCsc) el.slotCardCsc.classList.add('matched');
+    if (el.btnCopyCsc) el.btnCopyCsc.disabled = false;
+  } else {
+    const missingName = activeWipeMode === 'clean' ? 'CSC_...' : 'HOME_CSC_...';
+    if (el.textCscFile) el.textCscFile.innerText = `ไม่พบไฟล์ ${missingName}`;
+    if (el.textCscSize) el.textCscSize.innerText = 'ขนาด: -';
+    if (el.slotCardCsc) el.slotCardCsc.classList.remove('matched');
+    if (el.btnCopyCsc) el.btnCopyCsc.disabled = true;
+  }
+
+  // Enable Copy All if any slot is found
+  if (el.btnCopyAllSlots) {
+    const hasAny = slots.BL || slots.AP || slots.CP || cscFile;
+    el.btnCopyAllSlots.disabled = !hasAny;
+  }
+}
+
+function copySlotPath(slotType, btnElement) {
+  const { slots, activeWipeMode } = state.scannedSamsungFirmware;
+  if (!slots) return;
+
+  let target = null;
+  if (slotType === 'BL') target = slots.BL;
+  else if (slotType === 'AP') target = slots.AP;
+  else if (slotType === 'CP') target = slots.CP;
+  else if (slotType === 'CSC') {
+    target = activeWipeMode === 'clean' ? slots.CSC : slots.HOME_CSC;
+  }
+
+  if (target && target.fullPath) {
+    navigator.clipboard.writeText(target.fullPath).then(() => {
+      setInlineButtonFeedback(btnElement, `✅ คัดลอกแล้ว`);
+    });
+  }
+}
+
+function copyAllSlotPaths() {
+  const { slots, activeWipeMode } = state.scannedSamsungFirmware;
+  if (!slots) return;
+
+  const cscFile = activeWipeMode === 'clean' ? slots.CSC : slots.HOME_CSC;
+  const lines = [
+    slots.BL ? `BL: ${slots.BL.fullPath}` : null,
+    slots.AP ? `AP: ${slots.AP.fullPath}` : null,
+    slots.CP ? `CP: ${slots.CP.fullPath}` : null,
+    cscFile ? `CSC (${activeWipeMode === 'clean' ? 'Clean Wipe' : 'Keep Data'}): ${cscFile.fullPath}` : null
+  ].filter(Boolean);
+
+  if (lines.length > 0) {
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      setInlineButtonFeedback(el.btnCopyAllSlots, '✅ คัดลอกครบทุกช่องแล้ว!');
+    });
+  }
 }

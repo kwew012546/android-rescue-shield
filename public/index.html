@@ -455,23 +455,121 @@
                 </a>
               </div>
 
-              <!-- Odin 4-Slot Visual Helper Guide -->
-              <div class="odin-slots-guide">
-                <div class="odin-slot-box">
-                  <span class="slot-name">BL</span>
-                  <span class="slot-desc">ใส่ไฟล์ <code>BL_xxxx.tar.md5</code> (Bootloader)</span>
+              <!-- Smart Samsung Firmware Auto-Slotter & Wipe Selector -->
+              <div class="samsung-auto-slotter-wrapper">
+                <div class="slotter-header">
+                  <div>
+                    <h4 style="font-size: 1rem; color: #fff; margin-bottom: 0.2rem;">⚡ ตัวช่วยจัดช่องไฟล์รอมอัตโนมัติ (Smart Odin Auto-Slotter)</h4>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">เลือกลักษณะการล้าง แล้วระบบจะสแกนโฟลเดอร์รอมและสลับช่อง CSC ให้อัตโนมัติทันที</p>
+                  </div>
+                  <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                    <button id="btn-scan-downloads-rom" class="btn btn-secondary btn-sm" type="button" title="สแกนโฟลเดอร์ Downloads และ Desktop อัตโนมัติ">
+                      <span class="btn-icon">🔍</span> ตรวจหารอมในเครื่องอัตโนมัติ
+                    </button>
+                  </div>
                 </div>
-                <div class="odin-slot-box">
-                  <span class="slot-name">AP</span>
-                  <span class="slot-desc">ใส่ไฟล์ <code>AP_xxxx.tar.md5</code> (System Core)</span>
+
+                <!-- Folder Path Input -->
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                  <div class="file-input-wrapper">
+                    <input type="text" id="sam-folder-input" class="form-control" placeholder="พิมพ์หรือวาง Path โฟลเดอร์ที่แตกไฟล์รอม เช่น C:\Users\...\Downloads หรือคลิกตรวจหา" />
+                    <button id="btn-scan-custom-folder" class="btn btn-ghost btn-sm" type="button">📂 สแกนโฟลเดอร์นี้</button>
+                  </div>
+                  <div id="sam-scan-status" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem;">
+                    💡 เคล็ดลับ: แตกไฟล์รอม (.zip) ที่โหลดมาจาก SamFW ไว้ในโฟลเดอร์ Downloads แล้วกดปุ่มตรวจหาได้ทันที
+                  </div>
                 </div>
-                <div class="odin-slot-box">
-                  <span class="slot-name">CP</span>
-                  <span class="slot-desc">ใส่ไฟล์ <code>CP_xxxx.tar.md5</code> (Modem/Radio)</span>
+
+                <!-- Wipe Mode Selector (Clean Wipe vs Keep Data) -->
+                <div class="wipe-mode-selector">
+                  <div id="btn-mode-clean-wipe" class="wipe-mode-card active clean-mode" role="button" tabindex="0">
+                    <span class="mode-icon">⚡</span>
+                    <div class="mode-info">
+                      <span class="mode-title">⚡ Clean Wipe (ล้างเกลี้ยงโรงงาน)</span>
+                      <span class="mode-desc">แก้เครื่องค้าง/ติดรหัส ล้างสะอาดเหมือนเพิ่งแกะกล่องใหม่ (ใช้ไฟล์ <code>CSC_xxxx</code>)</span>
+                    </div>
+                  </div>
+
+                  <div id="btn-mode-keep-data" class="wipe-mode-card keep-mode" role="button" tabindex="0">
+                    <span class="mode-icon">⭐</span>
+                    <div class="mode-info">
+                      <span class="mode-title">⭐ Keep Data (กู้เครื่องรูปไม่หาย)</span>
+                      <span class="mode-desc">แก้เครื่องเปิดไม่ติด/วนลูป โดยไม่ลบรูปถ่าย แชท และข้อมูลในเครื่อง (ใช้ไฟล์ <code>HOME_CSC_xxxx</code>)</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="odin-slot-box highlight-slot">
-                  <span class="slot-name">CSC</span>
-                  <span class="slot-desc">⭐ กู้เครื่องรูปไม่หาย: ใส่ <code>HOME_CSC_xxxx</code><br>(ถ้าล้างเครื่องใหม่หมดให้ใส่ <code>CSC_xxxx</code>)</span>
+
+                <!-- Auto-Detected 4 Slots Grid -->
+                <div class="auto-slots-grid">
+                  <!-- BL Slot -->
+                  <div class="auto-slot-card" id="slot-card-bl">
+                    <div>
+                      <div class="auto-slot-card-header">
+                        <span class="auto-slot-name">BL</span>
+                        <span class="flasher-tag" id="tag-bl-status" style="font-size: 0.7rem;">รอไฟล์...</span>
+                      </div>
+                      <div class="auto-slot-filename" id="text-bl-file" title="ยังไม่ได้สแกนพบไฟล์">-</div>
+                      <div class="auto-slot-size" id="text-bl-size">ขนาด: -</div>
+                    </div>
+                    <button id="btn-copy-bl" class="btn btn-ghost btn-sm" type="button" disabled style="width: 100%; font-size: 0.75rem;">
+                      📋 คัดลอก Path BL
+                    </button>
+                  </div>
+
+                  <!-- AP Slot -->
+                  <div class="auto-slot-card" id="slot-card-ap">
+                    <div>
+                      <div class="auto-slot-card-header">
+                        <span class="auto-slot-name">AP</span>
+                        <span class="flasher-tag" id="tag-ap-status" style="font-size: 0.7rem;">รอไฟล์...</span>
+                      </div>
+                      <div class="auto-slot-filename" id="text-ap-file" title="ยังไม่ได้สแกนพบไฟล์">-</div>
+                      <div class="auto-slot-size" id="text-ap-size">ขนาด: -</div>
+                    </div>
+                    <button id="btn-copy-ap" class="btn btn-ghost btn-sm" type="button" disabled style="width: 100%; font-size: 0.75rem;">
+                      📋 คัดลอก Path AP
+                    </button>
+                  </div>
+
+                  <!-- CP Slot -->
+                  <div class="auto-slot-card" id="slot-card-cp">
+                    <div>
+                      <div class="auto-slot-card-header">
+                        <span class="auto-slot-name">CP</span>
+                        <span class="flasher-tag" id="tag-cp-status" style="font-size: 0.7rem;">รอไฟล์...</span>
+                      </div>
+                      <div class="auto-slot-filename" id="text-cp-file" title="ยังไม่ได้สแกนพบไฟล์">-</div>
+                      <div class="auto-slot-size" id="text-cp-size">ขนาด: -</div>
+                    </div>
+                    <button id="btn-copy-cp" class="btn btn-ghost btn-sm" type="button" disabled style="width: 100%; font-size: 0.75rem;">
+                      📋 คัดลอก Path CP
+                    </button>
+                  </div>
+
+                  <!-- CSC Slot (Dynamic) -->
+                  <div class="auto-slot-card" id="slot-card-csc" style="border-color: rgba(245, 158, 11, 0.4);">
+                    <div>
+                      <div class="auto-slot-card-header">
+                        <span class="auto-slot-name" style="color: #fbbf24;">CSC</span>
+                        <span class="flasher-tag" id="tag-csc-mode" style="font-size: 0.7rem; color: #fbbf24; border-color: rgba(245, 158, 11, 0.4);">โหมด Clean Wipe</span>
+                      </div>
+                      <div class="auto-slot-filename" id="text-csc-file" title="ยังไม่ได้สแกนพบไฟล์">-</div>
+                      <div class="auto-slot-size" id="text-csc-size">ขนาด: -</div>
+                    </div>
+                    <button id="btn-copy-csc" class="btn btn-ghost btn-sm" type="button" disabled style="width: 100%; font-size: 0.75rem;">
+                      📋 คัดลอก Path CSC
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Footer 1-Click Action -->
+                <div style="margin-top: 0.85rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                  <button id="btn-copy-all-slots" class="btn btn-secondary btn-sm" type="button" disabled>
+                    📋 คัดลอก Path ทั้งหมด 4 ช่องพร้อมกัน
+                  </button>
+                  <span style="font-size: 0.78rem; color: #94a3b8;">
+                    💡 เมื่อกดสลับระหว่าง Clean Wipe และ Keep Data ช่อง CSC จะเปลี่ยนไฟล์ให้อัตโนมัติทันที
+                  </span>
                 </div>
               </div>
             </div>

@@ -1305,6 +1305,109 @@ async function handleApi(req, res, pathname) {
     }
   }
 
+  // POST /api/samsung/scan-firmware - Auto-detect and match BL, AP, CP, CSC, HOME_CSC files in a directory
+  if (pathname === '/api/samsung/scan-firmware' && req.method === 'POST') {
+    const body = await parseJsonBody(req);
+    let targetDir = (body.folderPath || '').trim();
+
+    const userProfile = process.env.USERPROFILE || '';
+    if (!targetDir) {
+      // Auto-detect from Downloads, Desktop, or current directory
+      const candidates = [
+        path.join(userProfile, 'Downloads'),
+        path.join(userProfile, 'Desktop'),
+        process.cwd()
+      ];
+      for (const cand of candidates) {
+        if (fs.existsSync(cand)) {
+          try {
+            const files = fs.readdirSync(cand);
+            if (files.some(f => f.toLowerCase().endsWith('.tar.md5') || f.toLowerCase().endsWith('.tar'))) {
+              targetDir = cand;
+              break;
+            }
+            // Check 1-level subdirectories
+            for (const sub of files) {
+              const subPath = path.join(cand, sub);
+              if (fs.existsSync(subPath) && fs.statSync(subPath).isDirectory()) {
+                const subFiles = fs.readdirSync(subPath);
+                if (subFiles.some(f => f.toLowerCase().endsWith('.tar.md5') || f.toLowerCase().endsWith('.tar'))) {
+                  targetDir = subPath;
+                  break;
+                }
+              }
+            }
+            if (targetDir) break;
+          } catch (_) {}
+        }
+      }
+    } else {
+      targetDir = resolveFilePath(targetDir);
+    }
+
+    if (!targetDir || !fs.existsSync(targetDir)) {
+      return sendJson(res, 400, {
+        ok: false,
+        message: 'ไม่พบโฟลเดอร์ไฟล์รอมที่ระบุ กรุณาตรวจสอบเส้นทางโฟลเดอร์'
+      });
+    }
+
+    try {
+      const files = fs.readdirSync(targetDir);
+      const slots = {
+        BL: null,
+        AP: null,
+        CP: null,
+        CSC: null,
+        HOME_CSC: null
+      };
+
+      for (const file of files) {
+        const fullPath = path.join(targetDir, file);
+        const lower = file.toLowerCase();
+        if (!lower.endsWith('.tar.md5') && !lower.endsWith('.tar')) continue;
+
+        const stat = fs.statSync(fullPath);
+        const fileInfo = {
+          fileName: file,
+          fullPath: fullPath,
+          sizeMb: (stat.size / (1024 * 1024)).toFixed(2),
+          sizeGb: (stat.size / (1024 * 1024 * 1024)).toFixed(2)
+        };
+
+        if (file.startsWith('BL_') || file.includes('_BL_')) {
+          slots.BL = fileInfo;
+        } else if (file.startsWith('AP_') || file.includes('_AP_')) {
+          slots.AP = fileInfo;
+        } else if (file.startsWith('CP_') || file.includes('_CP_')) {
+          slots.CP = fileInfo;
+        } else if (file.startsWith('HOME_CSC_') || file.includes('HOME_CSC')) {
+          slots.HOME_CSC = fileInfo;
+        } else if (file.startsWith('CSC_') || file.includes('_CSC_')) {
+          slots.CSC = fileInfo;
+        }
+      }
+
+      const foundCount = [slots.BL, slots.AP, slots.CP, (slots.CSC || slots.HOME_CSC)].filter(Boolean).length;
+
+      return sendJson(res, 200, {
+        ok: true,
+        targetDir,
+        slots,
+        foundCount,
+        isComplete: foundCount === 4,
+        message: foundCount > 0
+          ? `สแกนพบไฟล์รอมศูนย์ ${foundCount}/4 ส่วนในโฟลเดอร์: ${targetDir}`
+          : `ไม่พบไฟล์รอม (.tar.md5 / .tar) ในโฟลเดอร์: ${targetDir}`
+      });
+    } catch (err) {
+      return sendJson(res, 500, {
+        ok: false,
+        message: 'เกิดข้อผิดพลาดในการสแกนไฟล์รอม: ' + err.message
+      });
+    }
+  }
+
   // 404 for unknown API
   return sendJson(res, 404, { ok: false, message: 'API Not Found' });
 }
