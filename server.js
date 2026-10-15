@@ -1408,6 +1408,236 @@ async function handleApi(req, res, pathname) {
     }
   }
 
+  // ==========================================
+  // XIAOMI / REDMI / POCO FASTBOOT FLASHER API
+  // ==========================================
+
+  // GET /api/xiaomi/status - Fastboot info for Xiaomi
+  if (pathname === '/api/xiaomi/status' && req.method === 'GET') {
+    let connected = false;
+    let product = '-';
+    let unlocked = '-';
+    try {
+      const devCheck = await runFastboot(['devices'], 2000);
+      if (devCheck.ok && devCheck.stdout.trim()) {
+        connected = true;
+        const prodRes = await runFastboot(['getvar', 'product'], 2000);
+        const unlockRes = await runFastboot(['getvar', 'unlocked'], 2000);
+        if (prodRes.output) {
+          const m = prodRes.output.match(/product:\s*([^\r\n]+)/i);
+          if (m) product = m[1].trim();
+        }
+        if (unlockRes.output) {
+          const m = unlockRes.output.match(/unlocked:\s*([^\r\n]+)/i);
+          if (m) unlocked = m[1].trim();
+        }
+      }
+    } catch (_) {}
+
+    return sendJson(res, 200, {
+      ok: true,
+      connected,
+      product,
+      unlocked,
+      fastbootBin: FASTBOOT_BIN,
+      hasFastboot: !!FASTBOOT_BIN
+    });
+  }
+
+  // POST /api/xiaomi/scan-rom - Auto-detect and validate Xiaomi Fastboot ROM folder
+  if (pathname === '/api/xiaomi/scan-rom' && req.method === 'POST') {
+    const body = await parseJsonBody(req);
+    let targetDir = (body.folderPath || '').trim();
+
+    const userProfile = process.env.USERPROFILE || '';
+    if (!targetDir) {
+      // Auto-detect from Downloads, Desktop, or current directory
+      const candidates = [
+        path.join(userProfile, 'Downloads'),
+        path.join(userProfile, 'Desktop'),
+        process.cwd()
+      ];
+      for (const cand of candidates) {
+        if (fs.existsSync(cand)) {
+          try {
+            const files = fs.readdirSync(cand);
+            // Direct check
+            if (files.some(f => f.toLowerCase() === 'flash_all.bat')) {
+              targetDir = cand;
+              break;
+            }
+            // 1-level subdirectories
+            for (const sub of files) {
+              const subPath = path.join(cand, sub);
+              if (fs.existsSync(subPath) && fs.statSync(subPath).isDirectory()) {
+                const subFiles = fs.readdirSync(subPath);
+                if (subFiles.some(f => f.toLowerCase() === 'flash_all.bat')) {
+                  targetDir = subPath;
+                  break;
+                }
+                // 2-level subdirectories (e.g. curtana_images_.../curtana_images_...)
+                for (const sub2 of subFiles) {
+                  const sub2Path = path.join(subPath, sub2);
+                  if (fs.existsSync(sub2Path) && fs.statSync(sub2Path).isDirectory()) {
+                    const sub2Files = fs.readdirSync(sub2Path);
+                    if (sub2Files.some(f => f.toLowerCase() === 'flash_all.bat')) {
+                      targetDir = sub2Path;
+                      break;
+                    }
+                  }
+                }
+                if (targetDir) break;
+              }
+            }
+            if (targetDir) break;
+          } catch (_) {}
+        }
+      }
+    } else {
+      targetDir = resolveFilePath(targetDir);
+    }
+
+    if (!targetDir || !fs.existsSync(targetDir)) {
+      return sendJson(res, 400, {
+        ok: false,
+        message: 'ไม่พบโฟลเดอร์รอมที่ระบุ กรุณาตรวจสอบเส้นทางโฟลเดอร์'
+      });
+    }
+
+    try {
+      const files = fs.readdirSync(targetDir);
+      const hasClean = files.some(f => f.toLowerCase() === 'flash_all.bat');
+      const hasKeep = files.some(f => f.toLowerCase() === 'flash_all_except_storage.bat' || f.toLowerCase() === 'flash_all_except_data_storage.bat');
+      const hasLock = files.some(f => f.toLowerCase() === 'flash_all_lock.bat');
+
+      // Check images directory
+      let imageCount = 0;
+      const imagesDir = path.join(targetDir, 'images');
+      if (fs.existsSync(imagesDir) && fs.statSync(imagesDir).isDirectory()) {
+        const imgFiles = fs.readdirSync(imagesDir);
+        imageCount = imgFiles.filter(f => f.toLowerCase().endsWith('.img') || f.toLowerCase().endsWith('.bin') || f.toLowerCase().endsWith('.elf')).length;
+      }
+
+      // Read fastboot product if connected
+      let deviceProduct = null;
+      let bootloaderUnlocked = null;
+      try {
+        const devCheck = await runFastboot(['devices'], 2000);
+        if (devCheck.ok && devCheck.stdout.trim()) {
+          const prodRes = await runFastboot(['getvar', 'product'], 2000);
+          const unlockRes = await runFastboot(['getvar', 'unlocked'], 2000);
+          if (prodRes.output) {
+            const m = prodRes.output.match(/product:\s*([^\r\n]+)/i);
+            if (m) deviceProduct = m[1].trim();
+          }
+          if (unlockRes.output) {
+            const m = unlockRes.output.match(/unlocked:\s*([^\r\n]+)/i);
+            if (m) bootloaderUnlocked = m[1].trim() === 'yes';
+          }
+        }
+      } catch (_) {}
+
+      const isValidRom = hasClean || hasKeep || hasLock;
+
+      return sendJson(res, 200, {
+        ok: true,
+        targetDir,
+        isValidRom,
+        scripts: {
+          clean: hasClean,
+          keep: hasKeep,
+          lock: hasLock
+        },
+        hasImages: imageCount > 0,
+        imageCount,
+        deviceProduct,
+        bootloaderUnlocked,
+        message: isValidRom
+          ? `พบสคริปต์รอม Fastboot ของ Xiaomi ครบถ้วน (พบ ${imageCount} ไฟล์ใน images/)`
+          : `ไม่พบสคริปต์ flash_all.bat ในโฟลเดอร์: ${targetDir} กรุณาตรวจสอบว่าแตกไฟล์ .tgz แล้วหรือไม่`
+      });
+    } catch (err) {
+      return sendJson(res, 500, {
+        ok: false,
+        message: 'เกิดข้อผิดพลาดในการตรวจสอบรอม Xiaomi: ' + err.message
+      });
+    }
+  }
+
+  // POST /api/xiaomi/flash - Execute Xiaomi Fastboot flash script (.bat) directly
+  if (pathname === '/api/xiaomi/flash' && req.method === 'POST') {
+    const body = await parseJsonBody(req);
+    const targetDir = resolveFilePath((body.folderPath || '').trim());
+    const mode = (body.mode || 'clean').toLowerCase(); // 'clean', 'keep', 'lock'
+
+    if (!targetDir || !fs.existsSync(targetDir)) {
+      return sendJson(res, 400, { ok: false, message: 'กรุณาระบุโฟลเดอร์รอมที่ถูกต้อง' });
+    }
+
+    let scriptName = 'flash_all.bat';
+    if (mode === 'keep') {
+      scriptName = fs.existsSync(path.join(targetDir, 'flash_all_except_storage.bat'))
+        ? 'flash_all_except_storage.bat'
+        : 'flash_all_except_data_storage.bat';
+    } else if (mode === 'lock') {
+      scriptName = 'flash_all_lock.bat';
+    }
+
+    const scriptPath = path.join(targetDir, scriptName);
+    if (!fs.existsSync(scriptPath)) {
+      return sendJson(res, 400, { ok: false, message: `ไม่พบสคริปต์ ${scriptName} ในโฟลเดอร์รอม` });
+    }
+
+    // Verify Fastboot device connection
+    const devCheck = await runFastboot(['devices'], 3000);
+    if (!devCheck.ok || !devCheck.stdout.trim()) {
+      return sendJson(res, 400, {
+        ok: false,
+        message: 'ไม่พบอุปกรณ์ในโหมด Fastboot กรุณาต่อสาย USB และกดลดเสียง+Power เข้า Fastboot ก่อน'
+      });
+    }
+
+    // Execute script via cmd.exe with FASTBOOT_BIN directory in PATH
+    const fastbootDir = path.dirname(FASTBOOT_BIN);
+    const envPath = `${fastbootDir};${process.env.PATH || ''}`;
+
+    try {
+      const execResult = await new Promise((resolve) => {
+        const { execFile } = require('child_process');
+        execFile('cmd.exe', ['/c', scriptPath], {
+          cwd: targetDir,
+          env: { ...process.env, PATH: envPath },
+          timeout: 600000, // 10 minutes timeout
+          maxBuffer: 20 * 1024 * 1024
+        }, (err, stdout, stderr) => {
+          const out = (stdout || '').trim();
+          const errOut = (stderr || '').trim();
+          const combined = [out, errOut].filter(Boolean).join('\n');
+          if (err) {
+            resolve({
+              ok: false,
+              message: err.message,
+              output: combined || err.message
+            });
+          } else {
+            resolve({
+              ok: true,
+              message: 'แฟลชรอม Xiaomi สำเร็จสมบูรณ์! โทรศัพท์กำลังรีบูตเข้าสู่ระบบใหม่',
+              output: combined
+            });
+          }
+        });
+      });
+
+      return sendJson(res, execResult.ok ? 200 : 500, execResult);
+    } catch (err) {
+      return sendJson(res, 500, {
+        ok: false,
+        message: 'เกิดข้อผิดพลาดในการรันสคริปต์แฟลช: ' + err.message
+      });
+    }
+  }
+
   // 404 for unknown API
   return sendJson(res, 404, { ok: false, message: 'API Not Found' });
 }

@@ -420,7 +420,20 @@
             </div>
           </div>
 
-          <!-- Samsung Smart Technician Assistant Hub -->
+          <!-- Multi-Brand Technician Hub Navigation -->
+          <div class="brand-hub-nav">
+            <button class="brand-nav-btn active" data-brand="samsung" type="button">
+              <span>🔵</span> SAMSUNG (Odin & Download)
+            </button>
+            <button class="brand-nav-btn" data-brand="xiaomi" type="button">
+              <span>🟠</span> XIAOMI / REDMI / POCO (Fastboot)
+            </button>
+            <button class="brand-nav-btn" data-brand="oplus" type="button">
+              <span>🟢</span> OPPO / REALME / VIVO (Recovery & EDL)
+            </button>
+          </div>
+
+          <!-- 1. Samsung Smart Technician Assistant Hub -->
           <div id="samsung-hub-card" class="samsung-hub-card">
             <div class="samsung-hub-header">
               <div class="samsung-hub-title">
@@ -570,6 +583,170 @@
                   <span style="font-size: 0.78rem; color: #94a3b8;">
                     💡 เมื่อกดสลับระหว่าง Clean Wipe และ Keep Data ช่อง CSC จะเปลี่ยนไฟล์ให้อัตโนมัติทันที
                   </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Xiaomi / Redmi / POCO Smart Fastboot Hub -->
+          <div id="xiaomi-hub-card" class="samsung-hub-card hidden" style="border-color: rgba(249, 115, 22, 0.45); background: linear-gradient(135deg, rgba(249, 115, 22, 0.12), rgba(15, 23, 42, 0.95));">
+            <div class="samsung-hub-header">
+              <div class="samsung-hub-title">
+                <span class="samsung-logo-badge" style="background: linear-gradient(135deg, #f97316, #ea580c); color: #fff;">🟠 XIAOMI / REDMI</span>
+                <div>
+                  <h3 style="font-size: 1.15rem; color: #fff;">ศูนย์อำนวยความสะดวกช่าง Xiaomi, Redmi & POCO (Fastboot Flasher)</h3>
+                  <p class="card-subtitle">แฟลชรอมศูนย์โดยตรงผ่าน Fastboot ในคลิกเดียว ไม่ต้องติดตั้ง Mi Flash Tool เพิ่ม</p>
+                </div>
+              </div>
+              <div class="samsung-meta-badges">
+                <span class="flasher-tag" id="mi-product-badge">Product: ตรวจสอบ...</span>
+                <span class="flasher-tag" id="mi-unlock-badge">Bootloader: ตรวจสอบ...</span>
+                <span class="flasher-tag" id="mi-fastboot-badge" style="color: #34d399; border-color: rgba(16, 185, 129, 0.4);">Fastboot: พร้อมใช้งาน (ในตัว)</span>
+              </div>
+            </div>
+
+            <div class="samsung-hub-body">
+              <div class="samsung-hub-actions">
+                <a id="btn-mi-download-rom" href="https://xiaomirom.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-large" style="text-decoration: none; background: linear-gradient(135deg, #f97316, #ea580c); border: none;">
+                  <span class="btn-icon">📥</span> 1-คลิกลิงก์ดาวน์โหลดรอมศูนย์ตรงรุ่น (XiaomiROM / MiFirm)
+                </a>
+                <button id="btn-mi-reboot-fastboot" class="btn btn-secondary btn-large" type="button">
+                  <span class="btn-icon">⚡</span> สั่งมือถือเข้า Fastboot Mode
+                </button>
+                <button id="btn-mi-reboot-recovery" class="btn btn-secondary btn-large" type="button">
+                  <span class="btn-icon">📥</span> สั่งมือถือเข้า Recovery Mode
+                </button>
+              </div>
+
+              <!-- Smart Xiaomi Fastboot Flasher & Wipe Selector -->
+              <div class="samsung-auto-slotter-wrapper" style="border-color: rgba(249, 115, 22, 0.35);">
+                <div class="slotter-header">
+                  <div>
+                    <h4 style="font-size: 1rem; color: #fff; margin-bottom: 0.2rem;">⚡ ตัวช่วยแฟลชรอม Xiaomi Fastboot อัตโนมัติ (Native Fastboot Flasher)</h4>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">เลือกลักษณะการล้าง แล้วสั่งแฟลชผ่านโปรแกรมได้ทันที 100% ไม่ต้องลงโปรแกรมอื่น</p>
+                  </div>
+                  <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                    <button id="btn-scan-mi-rom" class="btn btn-secondary btn-sm" type="button" title="สแกนหารอม Xiaomi ในโฟลเดอร์ Downloads และ Desktop อัตโนมัติ">
+                      <span class="btn-icon">🔍</span> ตรวจหารอม Xiaomi ในเครื่อง
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Folder Path Input -->
+                <div class="form-group" style="margin-bottom: 0.85rem;">
+                  <div class="file-input-wrapper">
+                    <input type="text" id="mi-folder-input" class="form-control" placeholder="พิมพ์หรือวาง Path โฟลเดอร์รอมที่แตกไฟล์ .tgz ไว้แล้ว เช่น C:\Users\...\Downloads\curtana_images" />
+                    <button id="btn-scan-mi-custom-folder" class="btn btn-ghost btn-sm" type="button">📂 สแกนโฟลเดอร์นี้</button>
+                  </div>
+                  <div id="mi-scan-status" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem;">
+                    💡 เคล็ดลับ: โหลดรอม Fastboot (.tgz) มาแตกไฟล์ไว้ในโฟลเดอร์ Downloads แล้วกดปุ่มตรวจหาได้ทันที
+                  </div>
+                </div>
+
+                <!-- Wipe Mode Selector (Clean Wipe vs Keep Data vs Clean & Lock) -->
+                <div class="wipe-mode-selector" style="grid-template-columns: repeat(3, 1fr);">
+                  <div id="btn-mi-mode-clean" class="wipe-mode-card active clean-mode" role="button" tabindex="0">
+                    <span class="mode-icon">⚡</span>
+                    <div class="mode-info">
+                      <span class="mode-title">⚡ Clean Wipe (flash_all)</span>
+                      <span class="mode-desc">ล้างเกลี้ยงโรงงาน แก้เครื่องค้าง ติดรหัส เหมือนเพิ่งแกะกล่องใหม่ (แนะนำสำหรับล้างเครื่อง)</span>
+                    </div>
+                  </div>
+
+                  <div id="btn-mi-mode-keep" class="wipe-mode-card keep-mode" role="button" tabindex="0">
+                    <span class="mode-icon">⭐</span>
+                    <div class="mode-info">
+                      <span class="mode-title">⭐ Keep Data (flash_all_except_storage)</span>
+                      <span class="mode-desc">กู้เครื่องเปิดไม่ติด/วนลูป โดยไม่ลบรูปถ่าย แชท และข้อมูลในเครื่องของลูกค้า</span>
+                    </div>
+                  </div>
+
+                  <div id="btn-mi-mode-lock" class="wipe-mode-card lock-mode" role="button" tabindex="0">
+                    <span class="mode-icon">🔒</span>
+                    <div class="mode-info">
+                      <span class="mode-title">🔒 Clean & Lock (flash_all_lock)</span>
+                      <span class="mode-desc">ล้างเครื่องเกลี้ยง พร้อมล็อก Bootloader คืนค่าศูนย์เหมือนวันแรก</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ROM Summary & Health Info -->
+                <div id="mi-rom-summary-card" class="auto-slot-card" style="margin-bottom: 0.85rem; padding: 0.85rem 1rem;">
+                  <div class="auto-slot-card-header">
+                    <span class="auto-slot-name" style="color: #f97316;">สถานะไฟล์รอม Xiaomi:</span>
+                    <span class="flasher-tag" id="mi-rom-health-badge">รอสแกนไฟล์...</span>
+                  </div>
+                  <div style="font-size: 0.82rem; color: #cbd5e1; line-height: 1.5; margin-top: 0.35rem;" id="mi-rom-details-text">
+                    ยังไม่ได้ตรวจพบโฟลเดอร์รอม คลิก 'ตรวจหารอม Xiaomi ในเครื่อง' เพื่อเริ่มการตรวจสอบ
+                  </div>
+                </div>
+
+                <!-- Action Execution Button -->
+                <div style="display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                  <button id="btn-execute-mi-flash" class="btn btn-primary btn-large" style="background: linear-gradient(135deg, #f97316, #ea580c); border: none;" disabled type="button">
+                    <span class="btn-icon">🚀</span> เริ่มต้นการแฟลชรอม Xiaomi ทันที (โหมด: Clean Wipe)
+                  </button>
+                  <span style="font-size: 0.78rem; color: #94a3b8;">
+                    ⚠️ ข้อกำหนด: โทรศัพท์ต้องปลดล็อก Bootloader แล้ว และเสียบสาย USB แน่นหนาห้ามหลุดระหว่างแฟลช
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Oppo / Realme / Vivo Assistant Hub -->
+          <div id="oplus-hub-card" class="samsung-hub-card hidden" style="border-color: rgba(16, 185, 129, 0.45); background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(15, 23, 42, 0.95));">
+            <div class="samsung-hub-header">
+              <div class="samsung-hub-title">
+                <span class="samsung-logo-badge" style="background: linear-gradient(135deg, #10b981, #059669); color: #fff;">🟢 OPPO / REALME / VIVO</span>
+                <div>
+                  <h3 style="font-size: 1.15rem; color: #fff;">ศูนย์อำนวยความสะดวกช่าง Oppo, Realme & Vivo (Recovery & Emergency)</h3>
+                  <p class="card-subtitle">กู้เครื่องค้าง/วนลูปผ่าน Recovery OTA (รูปไม่หาย) หรือสั่งรีบูตเข้าโหมดฉุกเฉิน EDL 9008 / MTK BROM</p>
+                </div>
+              </div>
+              <div class="samsung-meta-badges">
+                <span class="flasher-tag" style="color: #34d399; border-color: rgba(16, 185, 129, 0.4);">Sideload: พร้อมใช้งาน</span>
+                <span class="flasher-tag" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">EDL Protocol: พร้อมส่งคำสั่ง</span>
+              </div>
+            </div>
+
+            <div class="samsung-hub-body">
+              <div class="samsung-hub-actions">
+                <a href="https://support.oppo.com/th/software-update/" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-large" style="text-decoration: none;">
+                  <span class="btn-icon">📥</span> เว็บดาวน์โหลดรอมศูนย์ Oppo (Official OTA)
+                </a>
+                <a href="https://www.realme.com/th/support/software-update" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-large" style="text-decoration: none;">
+                  <span class="btn-icon">📥</span> เว็บดาวน์โหลดรอมศูนย์ Realme (Official OTA)
+                </a>
+                <a href="https://www.vivo.com/th/support/upgradePackage" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-large" style="text-decoration: none;">
+                  <span class="btn-icon">📥</span> เว็บดาวน์โหลดรอมศูนย์ Vivo (Official OTA)
+                </a>
+                <button id="btn-oplus-reboot-edl" class="btn btn-ghost btn-large" type="button">
+                  <span class="btn-icon">🔴</span> สั่งมือถือเข้าโหมด EDL (9008)
+                </button>
+              </div>
+
+              <!-- Oppo / Vivo Workflow Guidance Card -->
+              <div class="samsung-auto-slotter-wrapper" style="border-color: rgba(16, 185, 129, 0.35);">
+                <div class="slotter-header">
+                  <h4 style="font-size: 1rem; color: #fff; margin: 0;">💡 คู่มือมาตรฐานช่างในการกู้เครื่อง Oppo, Realme & Vivo</h4>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem;">
+                  <div style="background: var(--bg-primary); padding: 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; color: #34d399; margin-bottom: 0.35rem;">⭐ กู้เครื่องค้าง/วนลูป (ข้อมูลลูกค้าไม่หาย)</div>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; margin: 0;">
+                      1. ดาวน์โหลดไฟล์ Recovery OTA (.zip หรือ .ozip) ตรงรุ่น<br>
+                      2. สั่งมือถือเข้าโหมด Recovery แล้วใช้แท็บ <strong>ADB Sideload</strong> ด้านล่างเพื่อแฟลชไฟล์<br>
+                      3. หรือนำไฟล์ .zip ใส่ Flash Drive แล้วเสียบสาย OTG เลือก "Install from storage" ในหน้า Recovery
+                    </p>
+                  </div>
+                  <div style="background: var(--bg-primary); padding: 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; color: #f87171; margin-bottom: 0.35rem;">🔴 เครื่องดับสนิท / จอดำ (Hard Brick)</div>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; margin: 0;">
+                      • <strong>ชิป Qualcomm:</strong> สั่งเข้าโหมด EDL 9008 และใช้โปรแกรม <em>Oppo Flash Tool / MsmDownloadTool / QFIL</em><br>
+                      • <strong>ชิป MediaTek:</strong> ใช้โปรแกรม <em>SP Flash Tool</em> ร่วมกับ MTK Bypass หรือโปรแกรมเฉพาะทางของช่างศูนย์
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

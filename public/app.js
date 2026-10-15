@@ -12,10 +12,18 @@ const state = {
   activeTab: 'tab-rescue',
   debloatApps: [],
   bankData: null,
+  activeBrandHub: 'samsung',
   scannedSamsungFirmware: {
     slots: null,
     targetDir: '',
     activeWipeMode: 'clean' // 'clean' or 'keep'
+  },
+  scannedXiaomiRom: {
+    targetDir: '',
+    isValidRom: false,
+    scripts: null,
+    imageCount: 0,
+    activeWipeMode: 'clean' // 'clean', 'keep', 'lock'
   }
 };
 
@@ -146,6 +154,30 @@ const el = {
   btnCopyCsc: document.getElementById('btn-copy-csc'),
   btnCopyAllSlots: document.getElementById('btn-copy-all-slots'),
 
+  // Multi-Brand Hubs
+  xiaomiHubCard: document.getElementById('xiaomi-hub-card'),
+  oplusHubCard: document.getElementById('oplus-hub-card'),
+
+  // Xiaomi Hub Elements
+  miProductBadge: document.getElementById('mi-product-badge'),
+  miUnlockBadge: document.getElementById('mi-unlock-badge'),
+  miFastbootBadge: document.getElementById('mi-fastboot-badge'),
+  btnMiRebootFastboot: document.getElementById('btn-mi-reboot-fastboot'),
+  btnMiRebootRecovery: document.getElementById('btn-mi-reboot-recovery'),
+  miFolderInput: document.getElementById('mi-folder-input'),
+  btnScanMiRom: document.getElementById('btn-scan-mi-rom'),
+  btnScanMiCustomFolder: document.getElementById('btn-scan-mi-custom-folder'),
+  miScanStatus: document.getElementById('mi-scan-status'),
+  btnMiModeClean: document.getElementById('btn-mi-mode-clean'),
+  btnMiModeKeep: document.getElementById('btn-mi-mode-keep'),
+  btnMiModeLock: document.getElementById('btn-mi-mode-lock'),
+  miRomHealthBadge: document.getElementById('mi-rom-health-badge'),
+  miRomDetailsText: document.getElementById('mi-rom-details-text'),
+  btnExecuteMiFlash: document.getElementById('btn-execute-mi-flash'),
+
+  // Oppo / Vivo Hub Elements
+  btnOplusRebootEdl: document.getElementById('btn-oplus-reboot-edl'),
+
   // Modal
   modalUninstall: document.getElementById('modal-uninstall'),
   modalPkgName: document.getElementById('modal-pkg-name'),
@@ -158,6 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
   checkDevice();
   bindEvents();
   fetchSamsungStatus();
+  fetchXiaomiStatus();
 });
 
 // Event Bindings
@@ -372,6 +405,48 @@ function bindEvents() {
   }
   if (el.btnCopyAllSlots) {
     el.btnCopyAllSlots.addEventListener('click', copyAllSlotPaths);
+  }
+
+  // Multi-Brand Hub Navigation Switcher
+  document.querySelectorAll('.brand-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const brand = btn.getAttribute('data-brand');
+      switchBrandHub(brand);
+    });
+  });
+
+  // Xiaomi Hub Events
+  if (el.btnScanMiRom) {
+    el.btnScanMiRom.addEventListener('click', () => scanXiaomiRom(''));
+  }
+  if (el.btnScanMiCustomFolder) {
+    el.btnScanMiCustomFolder.addEventListener('click', () => {
+      const folder = (el.miFolderInput ? el.miFolderInput.value : '').trim();
+      scanXiaomiRom(folder);
+    });
+  }
+  if (el.btnMiModeClean) {
+    el.btnMiModeClean.addEventListener('click', () => setXiaomiWipeMode('clean'));
+  }
+  if (el.btnMiModeKeep) {
+    el.btnMiModeKeep.addEventListener('click', () => setXiaomiWipeMode('keep'));
+  }
+  if (el.btnMiModeLock) {
+    el.btnMiModeLock.addEventListener('click', () => setXiaomiWipeMode('lock'));
+  }
+  if (el.btnExecuteMiFlash) {
+    el.btnExecuteMiFlash.addEventListener('click', executeXiaomiFlash);
+  }
+  if (el.btnMiRebootFastboot) {
+    el.btnMiRebootFastboot.addEventListener('click', () => handleReboot('bootloader'));
+  }
+  if (el.btnMiRebootRecovery) {
+    el.btnMiRebootRecovery.addEventListener('click', () => handleReboot('recovery'));
+  }
+
+  // Oppo / Vivo Hub Events
+  if (el.btnOplusRebootEdl) {
+    el.btnOplusRebootEdl.addEventListener('click', () => handleReboot('edl'));
   }
 
   el.btnCancelUninstall.addEventListener('click', closeModal);
@@ -1865,3 +1940,239 @@ function copyAllSlotPaths() {
     });
   }
 }
+
+// ==============================================================
+// Multi-Brand Hub Navigation & Switcher
+// ==============================================================
+
+function switchBrandHub(brand) {
+  state.activeBrandHub = brand;
+
+  // Update Nav Buttons
+  document.querySelectorAll('.brand-nav-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-brand') === brand);
+  });
+
+  // Toggle Hub Cards
+  if (el.samsungHubCard) el.samsungHubCard.classList.toggle('hidden', brand !== 'samsung');
+  if (el.xiaomiHubCard) el.xiaomiHubCard.classList.toggle('hidden', brand !== 'xiaomi');
+  if (el.oplusHubCard) el.oplusHubCard.classList.toggle('hidden', brand !== 'oplus');
+
+  if (brand === 'xiaomi') {
+    fetchXiaomiStatus();
+  } else if (brand === 'samsung') {
+    fetchSamsungStatus();
+  }
+}
+
+// ==============================================================
+// Xiaomi / Redmi / POCO Fastboot Flasher Methods
+// ==============================================================
+
+async function fetchXiaomiStatus() {
+  try {
+    const res = await fetch('/api/xiaomi/status');
+    const data = await res.json();
+    if (!data.ok) return;
+
+    if (el.miProductBadge) {
+      el.miProductBadge.innerText = `Product: ${data.product || '-'}`;
+      if (data.connected && data.product !== '-') {
+        el.miProductBadge.style.borderColor = 'rgba(249, 115, 22, 0.4)';
+        el.miProductBadge.style.color = '#fb923c';
+        // Auto update download link with product if possible
+        if (el.btnMiDownloadRom && data.product) {
+          el.btnMiDownloadRom.href = `https://xiaomirom.com/en/rom/${data.product}-global/`;
+        }
+      }
+    }
+
+    if (el.miUnlockBadge) {
+      if (data.unlocked === 'yes') {
+        el.miUnlockBadge.innerText = 'Bootloader: Unlocked (ปลดล็อกแล้ว)';
+        el.miUnlockBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        el.miUnlockBadge.style.color = '#34d399';
+      } else if (data.unlocked === 'no') {
+        el.miUnlockBadge.innerText = 'Bootloader: Locked (ยังไม่ปลด)';
+        el.miUnlockBadge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        el.miUnlockBadge.style.color = '#f87171';
+      } else {
+        el.miUnlockBadge.innerText = 'Bootloader: ตรวจสอบ...';
+      }
+    }
+  } catch (err) {
+    console.warn('[Xiaomi Status Error]', err);
+  }
+}
+
+function setXiaomiWipeMode(mode) {
+  state.scannedXiaomiRom.activeWipeMode = mode;
+
+  if (el.btnMiModeClean) el.btnMiModeClean.classList.toggle('active', mode === 'clean');
+  if (el.btnMiModeKeep) el.btnMiModeKeep.classList.toggle('active', mode === 'keep');
+  if (el.btnMiModeLock) el.btnMiModeLock.classList.toggle('active', mode === 'lock');
+
+  renderXiaomiRomSummary();
+}
+
+async function scanXiaomiRom(folderPath) {
+  const btn = el.btnScanMiRom;
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-spinner"></span> กำลังสแกน...';
+  }
+  if (el.miScanStatus) {
+    el.miScanStatus.innerHTML = '<span class="loading-spinner"></span> กำลังค้นหาสคริปต์รอม Fastboot ของ Xiaomi...';
+  }
+
+  try {
+    const res = await fetch('/api/xiaomi/scan-rom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folderPath: folderPath || '' })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      state.scannedXiaomiRom.targetDir = data.targetDir;
+      state.scannedXiaomiRom.isValidRom = data.isValidRom;
+      state.scannedXiaomiRom.scripts = data.scripts;
+      state.scannedXiaomiRom.imageCount = data.imageCount || 0;
+
+      if (el.miFolderInput) el.miFolderInput.value = data.targetDir;
+
+      if (data.isValidRom) {
+        if (el.miScanStatus) {
+          el.miScanStatus.innerHTML = `✅ ${data.message}`;
+          el.miScanStatus.style.color = '#34d399';
+        }
+        appendTerminal(`[XIAOMI ROM SCAN] พบรอมศูนย์ Xiaomi พร้อมใช้งานใน: ${data.targetDir}`, 'success');
+      } else {
+        if (el.miScanStatus) {
+          el.miScanStatus.innerHTML = `⚠️ ${data.message}`;
+          el.miScanStatus.style.color = '#f59e0b';
+        }
+        appendTerminal(`[XIAOMI ROM SCAN] ไม่พบสคริปต์ flash_all.bat ใน: ${data.targetDir}`, 'warning');
+      }
+
+      renderXiaomiRomSummary();
+    } else {
+      if (el.miScanStatus) {
+        el.miScanStatus.innerHTML = `❌ ${data.message}`;
+        el.miScanStatus.style.color = '#f87171';
+      }
+      appendTerminal(`[XIAOMI ROM SCAN ERROR] ${data.message}`, 'error');
+    }
+  } catch (err) {
+    if (el.miScanStatus) {
+      el.miScanStatus.innerHTML = `❌ ข้อผิดพลาด: ${err.message}`;
+      el.miScanStatus.style.color = '#f87171';
+    }
+    appendTerminal(`[XIAOMI ROM SCAN ERROR] ${err.message}`, 'error');
+  } finally {
+    if (btn) {
+      btn.innerHTML = origHtml;
+      btn.disabled = false;
+    }
+  }
+}
+
+function renderXiaomiRomSummary() {
+  const { targetDir, isValidRom, scripts, imageCount, activeWipeMode } = state.scannedXiaomiRom;
+
+  let modeLabel = '⚡ Clean Wipe (ล้างเกลี้ยงโรงงาน)';
+  let scriptName = 'flash_all.bat';
+  if (activeWipeMode === 'keep') {
+    modeLabel = '⭐ Keep Data (กู้เครื่องรูปไม่หาย)';
+    scriptName = 'flash_all_except_storage.bat';
+  } else if (activeWipeMode === 'lock') {
+    modeLabel = '🔒 Clean & Lock (ล้างพร้อมล็อก)';
+    scriptName = 'flash_all_lock.bat';
+  }
+
+  if (el.btnExecuteMiFlash) {
+    el.btnExecuteMiFlash.innerHTML = `<span class="btn-icon">🚀</span> เริ่มต้นการแฟลชรอม Xiaomi ทันที (${modeLabel})`;
+    el.btnExecuteMiFlash.disabled = !isValidRom;
+  }
+
+  if (!el.miRomHealthBadge || !el.miRomDetailsText) return;
+
+  if (isValidRom) {
+    el.miRomHealthBadge.innerText = '✅ พร้อมแฟลช';
+    el.miRomHealthBadge.style.color = '#34d399';
+    el.miRomHealthBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+
+    const hasActiveScript = scripts && (
+      (activeWipeMode === 'clean' && scripts.clean) ||
+      (activeWipeMode === 'keep' && scripts.keep) ||
+      (activeWipeMode === 'lock' && scripts.lock)
+    );
+
+    el.miRomDetailsText.innerHTML = `
+      📁 <strong>โฟลเดอร์รอม:</strong> <code>${escapeHtml(targetDir)}</code><br>
+      📜 <strong>สคริปต์ที่เลือก:</strong> <code>${scriptName}</code> ${hasActiveScript ? '✅ ตรวจพบ' : '⚠️ ไม่พบสคริปต์นี้'}<br>
+      📦 <strong>พาร์ติชันในโฟลเดอร์ images/:</strong> ${imageCount} ไฟล์อิมเมจพร้อมเขียนลงเครื่อง
+    `;
+  } else {
+    el.miRomHealthBadge.innerText = 'รอไฟล์รอม...';
+    el.miRomHealthBadge.style.color = '#f87171';
+    el.miRomHealthBadge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+    el.miRomDetailsText.innerHTML = 'ยังไม่ได้ตรวจพบโฟลเดอร์รอมที่ถูกต้อง คลิก "ตรวจหารอม Xiaomi ในเครื่อง" หรือระบุโฟลเดอร์ที่แตกไฟล์ .tgz ไว้';
+  }
+}
+
+async function executeXiaomiFlash() {
+  const { targetDir, activeWipeMode } = state.scannedXiaomiRom;
+  if (!targetDir) return;
+
+  let modeDesc = 'ล้างเครื่องทั้งหมดเหมือนแกะกล่องใหม่ (Clean Wipe)';
+  if (activeWipeMode === 'keep') modeDesc = 'กู้เครื่องโดยไม่ลบรูปถ่ายและข้อมูลลูกค้า (Keep Data)';
+  else if (activeWipeMode === 'lock') modeDesc = 'ล้างเครื่องเกลี้ยงพร้อมล็อก Bootloader กลับคืนศูนย์';
+
+  if (!confirm(`⚠️ ยืนยันการแฟลชรอม Xiaomi / Redmi\n\nโหมดที่เลือก: ${modeDesc}\nโฟลเดอร์รอม: ${targetDir}\n\n* กรุณาอย่าถอดสาย USB และห้ามปิดเครื่องจนกว่าจะเสร็จสิ้น\nต้องการเริ่มดำเนินการทันทีหรือไม่?`)) {
+    return;
+  }
+
+  const btn = el.btnExecuteMiFlash;
+  const origHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="loading-spinner"></span> กำลังแฟลชรอม Xiaomi (ห้ามถอดสาย USB)...`;
+
+  appendTerminal(`[XIAOMI FLASH START] เริ่มกระบวนการแฟลชรอม โหมด: ${activeWipeMode} โฟลเดอร์: ${targetDir}`, 'warning');
+
+  try {
+    const res = await fetch('/api/xiaomi/flash', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folderPath: targetDir, mode: activeWipeMode })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      appendTerminal(`[XIAOMI FLASH SUCCESS] ${data.message}`, 'success');
+      if (data.output) {
+        appendTerminal(`--- รายละเอียด Log การแฟลช ---\n${data.output}`);
+      }
+      showEmergencyMessage('✅ แฟลชรอม Xiaomi สำเร็จสมบูรณ์แล้ว! โทรศัพท์กำลังรีบูต', 'success');
+      btn.innerHTML = '✅ แฟลชสำเร็จเรียบร้อย!';
+    } else {
+      appendTerminal(`[XIAOMI FLASH FAILED] ${data.message}`, 'error');
+      if (data.output) {
+        appendTerminal(`--- รายละเอียด Error ---\n${data.output}`, 'error');
+      }
+      showEmergencyMessage(`❌ การแฟลชล้มเหลว: ${data.message}`, 'error');
+      btn.innerHTML = '❌ การแฟลชล้มเหลว';
+    }
+  } catch (err) {
+    appendTerminal(`[XIAOMI FLASH ERROR] ${err.message}`, 'error');
+    showEmergencyMessage(`❌ เกิดข้อผิดพลาด: ${err.message}`, 'error');
+    btn.innerHTML = '❌ เกิดข้อผิดพลาด';
+  } finally {
+    setTimeout(() => {
+      btn.innerHTML = origHtml;
+      btn.disabled = false;
+    }, 4000);
+  }
+}
+
